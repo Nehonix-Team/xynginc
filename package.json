@@ -1,0 +1,28 @@
+{
+  "name": "@xypriss/xynginc",
+  "version": "0.0.1",
+  "description": "XyPriss Nginx Controller - Official Plugin",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "postinstall": "node scripts/install-binary.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "xypriss",
+    "nginx",
+    "controller",
+    "plugin",
+    "gateway"
+  ],
+  "author": "Nehonix Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "xypriss": "^4.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
