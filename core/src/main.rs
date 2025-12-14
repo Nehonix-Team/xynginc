@@ -371,7 +371,7 @@ fn enable_site(domain: &str) -> Result<(), String> {
 
     Ok(())
 }
-
+ 
 fn setup_ssl(config: &DomainConfig) -> Result<(), String> {
     println!("🔒 Setting up SSL for {}...", config.domain);
 
