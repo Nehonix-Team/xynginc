@@ -1,11 +1,18 @@
 [package]
-name = "xynginc-core"
-version = "0.1.0"
+name = "xynginc"
+version = "1.0.0"
 edition = "2021"
+authors = ["iDevo & Antigravity"]
+description = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL"
 
 [dependencies]
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-anyhow = "1.0"
+libc = "0.2"
+
+[profile.release]
+opt-level = 3       # Optimisation maximale
+lto = true          # Link-Time Optimization
+codegen-units = 1   # Meilleure optimisation
+strip = true        # Retire les symboles debug (binaire plus petit)
