@@ -25,7 +25,8 @@ async function downloadBinary() {
 
   console.log(`📦 [XyNginC] Downloading binary for ${platform}-${arch}...`);
 
-  const binaryName = `${BINARY_NAME}-${platform}-${arch}`;
+  // const binaryName = `${BINARY_NAME}-${platform}-${arch}`; // no need cause it will be always a 'linux' platform
+  const binaryName = BINARY_NAME;
   const downloadUrl =
     VERSION === "latest"
       ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
