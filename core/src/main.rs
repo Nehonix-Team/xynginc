@@ -652,7 +652,40 @@ fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     file.write_all(nginx_config.as_bytes())
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
+    // Copy error page to web directory if it doesn't exist
+    ensure_error_page_exists()?;
+
     println!("   ✓ Config written to {}", config_path);
+    Ok(())
+}
+
+/// Ensure the custom error page exists in the web directory
+fn ensure_error_page_exists() -> Result<(), String> {
+    let error_page_dir = "/var/www/xynginc";
+    let error_page_path = format!("{}/error.html", error_page_dir);
+
+    // Create directory if it doesn't exist
+    if !Path::new(error_page_dir).exists() {
+        fs::create_dir_all(error_page_dir)
+            .map_err(|e| format!("Failed to create error page directory: {}", e))?;
+    }
+
+    // Copy error page if it doesn't exist
+    if !Path::new(&error_page_path).exists() {
+        let template_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/configs");
+        let template_path = template_dir.join("error.html");
+        
+        if template_path.exists() {
+            let error_html = fs::read_to_string(&template_path)
+                .map_err(|e| format!("Failed to read error page template: {}", e))?;
+            
+            fs::write(&error_page_path, error_html)
+                .map_err(|e| format!("Failed to write error page: {}", e))?;
+            
+            println!("   ✓ Error page created at {}", error_page_path);
+        }
+    }
+
     Ok(())
 }
 
