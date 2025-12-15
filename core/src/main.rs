@@ -5,6 +5,9 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
+mod requirements;
+use requirements::interactive_install;
+
 const NGINX_SITES_AVAILABLE: &str = "/etc/nginx/sites-available";
 const NGINX_SITES_ENABLED: &str = "/etc/nginx/sites-enabled";
 const BACKUP_DIR: &str = "/var/backups/xynginc";
@@ -37,6 +40,9 @@ enum Commands {
 
     /// Check system requirements (nginx, certbot)
     Check,
+
+    /// Install and configure missing system requirements
+    Install,
 
     /// List all configured domains
     List,
@@ -124,6 +130,7 @@ fn main() {
     let result = match &cli.command {
         Commands::Apply { config, no_backup, force } => apply_config(config, *no_backup, *force),
         Commands::Check => check_requirements(),
+        Commands::Install => install_requirements(),
         Commands::List => list_domains(),
         Commands::Add {
             domain,
@@ -150,6 +157,10 @@ fn main() {
 
 fn is_root() -> bool {
     unsafe { libc::geteuid() == 0 }
+}
+
+fn install_requirements() -> Result<(), String> {
+    interactive_install()
 }
 
 fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), String> {

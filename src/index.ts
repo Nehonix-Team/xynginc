@@ -29,6 +29,8 @@ interface XyNginCPluginOptions extends XyNginCConfig {
   autoDownload?: boolean;
   /** GitHub release version to download (default: "latest") */
   version?: string;
+  /** Automatically install system requirements if missing (default: true) */
+  installRequirements?: boolean;
 }
 
 const BINARY_NAME = "xynginc";
@@ -42,6 +44,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
     binaryPath,
     autoDownload = true,
     version = "latest",
+    installRequirements = true,
   } = options;
 
   return Plugin.create({
@@ -68,7 +71,23 @@ export default function XNCP(options: XyNginCPluginOptions) {
 
         // 2. Check system requirements
         Logger.info("[XyNginC] Checking system requirements...");
-        await checkRequirements(binary);
+
+        // Check if requirements are satisfied
+        const requirementsOk = await checkRequirements(binary);
+
+        // Install requirements if enabled and needed
+        if (!requirementsOk && installRequirements) {
+          Logger.info(
+            "[XyNginC] Requirements missing, installing automatically..."
+          );
+          await installRequirementsHandler(binary);
+          Logger.info("[XyNginC] Requirements installed, re-checking...");
+          await checkRequirements(binary);
+        } else if (!requirementsOk) {
+          throw new Error(
+            "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install"
+          );
+        }
 
         // 3. Apply configuration
         Logger.info("[XyNginC] Applying configuration...");
@@ -89,6 +108,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
           reload: () => reloadNginx(binary),
           test: () => testNginx(binary),
           status: () => getStatus(binary),
+          installRequirements: () => installRequirementsHandler(binary),
         };
 
         Logger.info("[XyNginC] Server methods available: server.xynginc.*");
@@ -252,13 +272,30 @@ async function downloadBinary(version: string): Promise<string> {
 /**
  * Check system requirements using the binary
  */
-async function checkRequirements(binaryPath: string): Promise<void> {
+async function checkRequirements(binaryPath: string): Promise<boolean> {
   try {
     const { stdout, stderr } = await execAsync(`sudo ${binaryPath} check`);
     Logger.info(stdout.trim());
     if (stderr) Logger.error(stderr.trim());
+    return true;
   } catch (error: any) {
-    throw new Error(`System requirements check failed: ${error.message}`);
+    Logger.warn(`[XyNginC] System requirements check failed: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Install system requirements using the binary
+ */
+async function installRequirementsHandler(binaryPath: string): Promise<void> {
+  try {
+    Logger.info("[XyNginC] Installing system requirements...");
+    const { stdout, stderr } = await execAsync(`sudo ${binaryPath} install`);
+    Logger.info(stdout.trim());
+    if (stderr) Logger.error(stderr.trim());
+    Logger.success("[XyNginC] ✓ System requirements installed successfully");
+  } catch (error: any) {
+    throw new Error(`Failed to install system requirements: ${error.message}`);
   }
 }
 
