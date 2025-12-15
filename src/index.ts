@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import https from "https";
+import { Logger } from "./logger";
 
 const execAsync = promisify(exec);
 
@@ -48,29 +49,31 @@ export default function XNCP(options: XyNginCPluginOptions) {
     description: "XyPriss Nginx Controller - Automatic Nginx & SSL management",
 
     onRegister: async () => {
-      console.log("[XyNginC] 🔧 Registering plugin...");
+      Logger.info("[XyNginC] Registering plugin...");
 
       // Validate config
       validateConfig({ domains, autoReload });
     },
 
     onServerStart: async (server) => {
-      console.log("[XyNginC] 🚀 Initializing Nginx Controller...");
+      Logger.info("[XyNginC] Initializing Nginx Controller...");
+
+      // Logger.debug(`server: ${server}`);
 
       try {
         // 1. Ensure binary exists
         const binary = await ensureBinary(binaryPath, autoDownload, version);
-        console.log(`[XyNginC] ✓ Binary located: ${binary}`);
+        Logger.success(`[XyNginC] ✓ Binary located: ${binary}`);
 
         // 2. Check system requirements
-        console.log("[XyNginC] 🔍 Checking system requirements...");
+        Logger.info("[XyNginC] Checking system requirements...");
         await checkRequirements(binary);
 
         // 3. Apply configuration
-        console.log("[XyNginC] 📋 Applying configuration...");
+        Logger.info("[XyNginC] Applying configuration...");
         await applyConfig(binary, { domains, auto_reload: autoReload });
 
-        console.log("[XyNginC] ✅ Configuration applied successfully!");
+        Logger.success("[XyNginC] Configuration applied successfully!");
 
         // Expose CLI helper methods on server
         server.xynginc = {
@@ -87,15 +90,15 @@ export default function XNCP(options: XyNginCPluginOptions) {
           status: () => getStatus(binary),
         };
 
-        console.log("[XyNginC] 💡 Server methods available: server.xynginc.*");
+        Logger.info("[XyNginC] Server methods available: server.xynginc.*");
       } catch (error) {
-        console.error("[XyNginC] ❌ Failed to initialize:", error);
+        Logger.error(`[XyNginC] ❌ Failed to initialize: ${error}`);
         throw error;
       }
     },
 
     onServerStop: async () => {
-      console.log("[XyNginC] 👋 Shutting down Nginx Controller...");
+      Logger.info("[XyNginC] Shutting down Nginx Controller...");
     },
   });
 }
@@ -168,7 +171,7 @@ async function ensureBinary(
 
   // 4. Auto-download if enabled
   if (autoDownload) {
-    console.log("[XyNginC] 📥 Binary not found, downloading...");
+    Logger.info("[XyNginC] Binary not found, downloading...");
     return await downloadBinary(version);
   }
 
@@ -196,7 +199,7 @@ async function downloadBinary(version: string): Promise<string> {
       ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
       : `https://github.com/${GITHUB_REPO}/releases/download/${version}/${binaryName}`;
 
-  console.log(`[XyNginC] 📦 Downloading from: ${downloadUrl}`);
+  Logger.info(`[XyNginC] Downloading from: ${downloadUrl}`);
 
   // Create bin directory
   if (!fs.existsSync(BINARY_DIR)) {
@@ -218,7 +221,7 @@ async function downloadBinary(version: string): Promise<string> {
               file.on("finish", () => {
                 file.close();
                 fs.chmodSync(localPath, 0o755); // Make executable
-                console.log("[XyNginC] ✓ Binary downloaded successfully");
+                Logger.success("[XyNginC] ✓ Binary downloaded successfully");
                 resolve(localPath);
               });
             })
@@ -228,7 +231,7 @@ async function downloadBinary(version: string): Promise<string> {
           file.on("finish", () => {
             file.close();
             fs.chmodSync(localPath, 0o755); // Make executable
-            console.log("[XyNginC] ✓ Binary downloaded successfully");
+            Logger.success("[XyNginC] ✓ Binary downloaded successfully");
             resolve(localPath);
           });
         }
@@ -246,8 +249,8 @@ async function downloadBinary(version: string): Promise<string> {
 async function checkRequirements(binaryPath: string): Promise<void> {
   try {
     const { stdout, stderr } = await execAsync(`sudo ${binaryPath} check`);
-    console.log(stdout);
-    if (stderr) console.error(stderr);
+    Logger.info(stdout.trim());
+    if (stderr) Logger.error(stderr.trim());
   } catch (error: any) {
     throw new Error(`System requirements check failed: ${error.message}`);
   }
@@ -263,13 +266,26 @@ async function applyConfig(
   const configJson = JSON.stringify(config);
 
   try {
+    // Test nginx BEFORE applying new config
+    Logger.info("[XyNginC] Testing current nginx config...");
+    const testResult = await testNginx(binaryPath);
+    if (!testResult) {
+      Logger.warn(
+        "[XyNginC] ⚠️  Current nginx config has errors. Attempting to fix..."
+      );
+    }
+
     // Pass config via stdin to avoid shell escaping issues
     const { stdout, stderr } = await execAsync(
       `echo '${configJson}' | sudo ${binaryPath} apply --config -`
     );
-    console.log(stdout);
-    if (stderr) console.error(stderr);
+    Logger.info(stdout.trim());
+    if (stderr) Logger.error(stderr.trim());
   } catch (error: any) {
+    // If it fails, show more helpful error
+    Logger.error(`[XyNginC] Failed to apply configuration: ${error.message}`);
+    Logger.info("[XyNginC] Try running: sudo nginx -t");
+    Logger.info("[XyNginC] Check: /etc/nginx/sites-enabled/");
     throw new Error(`Failed to apply configuration: ${error.message}`);
   }
 }
@@ -291,7 +307,7 @@ async function addDomain(
     const { stdout } = await execAsync(
       `sudo ${binaryPath} add --domain ${domain} --port ${port} ${sslFlag} ${emailFlag}`
     );
-    console.log(stdout);
+    Logger.info(stdout.trim());
   } catch (error: any) {
     throw new Error(`Failed to add domain: ${error.message}`);
   }
@@ -303,7 +319,7 @@ async function addDomain(
 async function removeDomain(binaryPath: string, domain: string): Promise<void> {
   try {
     const { stdout } = await execAsync(`sudo ${binaryPath} remove ${domain}`);
-    console.log(stdout);
+    Logger.info(stdout.trim());
   } catch (error: any) {
     throw new Error(`Failed to remove domain: ${error.message}`);
   }
@@ -329,7 +345,7 @@ async function listDomains(binaryPath: string): Promise<string[]> {
 async function reloadNginx(binaryPath: string): Promise<void> {
   try {
     const { stdout } = await execAsync(`sudo ${binaryPath} reload`);
-    console.log(stdout);
+    Logger.info(stdout.trim());
   } catch (error: any) {
     throw new Error(`Failed to reload Nginx: ${error.message}`);
   }

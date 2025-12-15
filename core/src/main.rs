@@ -7,6 +7,7 @@ use std::process::Command;
 
 const NGINX_SITES_AVAILABLE: &str = "/etc/nginx/sites-available";
 const NGINX_SITES_ENABLED: &str = "/etc/nginx/sites-enabled";
+const BACKUP_DIR: &str = "/var/backups/xynginc";
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
@@ -24,6 +25,14 @@ enum Commands {
         /// Path to config file (use '-' for stdin)
         #[arg(short, long)]
         config: String,
+
+        /// Skip backup before applying
+        #[arg(long)]
+        no_backup: bool,
+
+        /// Force apply even if nginx test fails
+        #[arg(long)]
+        force: bool,
     },
 
     /// Check system requirements (nginx, certbot)
@@ -65,6 +74,19 @@ enum Commands {
 
     /// Show status of all domains
     Status,
+
+    /// Clean broken or conflicting configurations
+    Clean {
+        /// Dry run (don't delete, just show)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Restore from backup
+    Restore {
+        /// Backup timestamp to restore (or 'latest')
+        backup_id: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,7 +116,7 @@ fn main() {
     }
 
     let result = match &cli.command {
-        Commands::Apply { config } => apply_config(config),
+        Commands::Apply { config, no_backup, force } => apply_config(config, *no_backup, *force),
         Commands::Check => check_requirements(),
         Commands::List => list_domains(),
         Commands::Add {
@@ -107,6 +129,8 @@ fn main() {
         Commands::Test => test_nginx(),
         Commands::Reload => reload_nginx(),
         Commands::Status => show_status(),
+        Commands::Clean { dry_run } => clean_broken_configs(*dry_run),
+        Commands::Restore { backup_id } => restore_backup(backup_id),
     };
 
     match result {
@@ -122,7 +146,7 @@ fn is_root() -> bool {
     unsafe { libc::geteuid() == 0 }
 }
 
-fn apply_config(config_path: &str) -> Result<(), String> {
+fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), String> {
     println!("📋 Applying configuration...");
 
     let config_content = if config_path == "-" {
@@ -138,8 +162,40 @@ fn apply_config(config_path: &str) -> Result<(), String> {
 
     println!("✓ Config parsed: {} domain(s)", config.domains.len());
 
+    // ÉTAPE 0: Créer un backup avant toute modification
+    if !no_backup {
+        println!("\n💾 Creating backup...");
+        create_backup()?;
+    }
+
+    // ÉTAPE 1: Détecter et nettoyer les configs cassées
+    println!("\n🔍 Checking for broken configurations...");
+    let broken_configs = detect_broken_configs()?;
+    
+    if !broken_configs.is_empty() {
+        println!("⚠️  Found {} broken configuration(s)", broken_configs.len());
+        for broken in &broken_configs {
+            println!("   - {}", broken);
+        }
+        
+        println!("🧹 Cleaning broken configurations...");
+        for broken in &broken_configs {
+            let _ = remove_config_files(broken); // Ignore errors
+        }
+        println!("✓ Cleanup complete");
+    } else {
+        println!("✓ No broken configurations found");
+    }
+
+    // ÉTAPE 2: Appliquer les nouvelles configurations
     for domain_config in &config.domains {
         println!("\n🌐 Processing: {}", domain_config.domain);
+        
+        // Vérifier si une config existe déjà
+        if config_exists(&domain_config.domain) {
+            println!("   ℹ️  Configuration already exists, will be overwritten");
+        }
+        
         generate_nginx_config(domain_config)?;
         enable_site(&domain_config.domain)?;
 
@@ -148,6 +204,30 @@ fn apply_config(config_path: &str) -> Result<(), String> {
         }
     }
 
+    // ÉTAPE 3: Tester la configuration avant reload
+    println!("\n🧪 Testing nginx configuration...");
+    match test_nginx() {
+        Ok(_) => println!("✓ Configuration is valid"),
+        Err(e) => {
+            if force {
+                println!("⚠️  Configuration test failed but --force is enabled");
+                println!("   Error: {}", e);
+            } else {
+                println!("❌ Configuration test failed!");
+                println!("   {}", e);
+                println!("\n🔄 Rolling back changes...");
+                
+                // Restaurer le backup
+                if !no_backup {
+                    restore_latest_backup()?;
+                }
+                
+                return Err("Configuration test failed. Changes have been rolled back.".to_string());
+            }
+        }
+    }
+
+    // ÉTAPE 4: Reload nginx si auto_reload est activé
     if config.auto_reload {
         println!("\n🔄 Auto-reload enabled");
         reload_nginx()?;
@@ -155,6 +235,211 @@ fn apply_config(config_path: &str) -> Result<(), String> {
 
     println!("\n✅ Configuration applied successfully!");
     Ok(())
+}
+
+fn create_backup() -> Result<(), String> {
+    // Créer le répertoire de backup s'il n'existe pas
+    if !Path::new(BACKUP_DIR).exists() {
+        fs::create_dir_all(BACKUP_DIR)
+            .map_err(|e| format!("Failed to create backup directory: {}", e))?;
+    }
+
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let backup_path = format!("{}/backup_{}", BACKUP_DIR, timestamp);
+    
+    fs::create_dir_all(&backup_path)
+        .map_err(|e| format!("Failed to create backup directory: {}", e))?;
+
+    // Copier sites-available
+    copy_directory(NGINX_SITES_AVAILABLE, &format!("{}/sites-available", backup_path))?;
+    
+    // Copier sites-enabled (symlinks)
+    copy_directory(NGINX_SITES_ENABLED, &format!("{}/sites-enabled", backup_path))?;
+
+    println!("   ✓ Backup created: {}", backup_path);
+    Ok(())
+}
+
+fn copy_directory(src: &str, dst: &str) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| format!("Failed to create directory: {}", e))?;
+    
+    for entry in fs::read_dir(src).map_err(|e| format!("Failed to read directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let file_name = entry.file_name();
+        let src_path = entry.path();
+        let dst_path = Path::new(dst).join(&file_name);
+        
+        if src_path.is_file() {
+            fs::copy(&src_path, &dst_path)
+                .map_err(|e| format!("Failed to copy file: {}", e))?;
+        }
+    }
+    
+    Ok(())
+}
+
+fn restore_latest_backup() -> Result<(), String> {
+    let backups = list_backups()?;
+    
+    if backups.is_empty() {
+        return Err("No backups available".to_string());
+    }
+    
+    let latest = &backups[0];
+    restore_backup(latest)?;
+    
+    Ok(())
+}
+
+fn list_backups() -> Result<Vec<String>, String> {
+    if !Path::new(BACKUP_DIR).exists() {
+        return Ok(vec![]);
+    }
+
+    let mut backups = vec![];
+    
+    for entry in fs::read_dir(BACKUP_DIR).map_err(|e| format!("Failed to read backups: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let name = entry.file_name();
+        backups.push(name.to_string_lossy().to_string());
+    }
+    
+    backups.sort();
+    backups.reverse(); // Plus récent en premier
+    
+    Ok(backups)
+}
+
+fn restore_backup(backup_id: &str) -> Result<(), String> {
+    let backup_path = if backup_id == "latest" {
+        let backups = list_backups()?;
+        if backups.is_empty() {
+            return Err("No backups available".to_string());
+        }
+        format!("{}/{}", BACKUP_DIR, backups[0])
+    } else {
+        format!("{}/{}", BACKUP_DIR, backup_id)
+    };
+
+    if !Path::new(&backup_path).exists() {
+        return Err(format!("Backup not found: {}", backup_path));
+    }
+
+    println!("🔄 Restoring from backup: {}", backup_path);
+
+    // Supprimer les configs actuelles
+    for entry in fs::read_dir(NGINX_SITES_ENABLED).map_err(|e| format!("Failed to read sites-enabled: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
+        if path.is_file() || path.is_symlink() {
+            fs::remove_file(&path).map_err(|e| format!("Failed to remove file: {}", e))?;
+        }
+    }
+
+    // Restaurer sites-available
+    copy_directory(&format!("{}/sites-available", backup_path), NGINX_SITES_AVAILABLE)?;
+    
+    // Restaurer sites-enabled
+    copy_directory(&format!("{}/sites-enabled", backup_path), NGINX_SITES_ENABLED)?;
+
+    println!("✓ Backup restored successfully");
+    
+    Ok(())
+}
+
+fn detect_broken_configs() -> Result<Vec<String>, String> {
+    let mut broken = vec![];
+
+    // Test nginx config
+    let output = Command::new("nginx")
+        .arg("-t")
+        .output()
+        .map_err(|e| format!("Failed to run nginx -t: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        
+        // Parser le output pour trouver les fichiers problématiques
+        for line in stderr.lines() {
+            // Chercher les patterns comme "cannot load certificate" ou "unknown directive"
+            if line.contains("in /etc/nginx/sites-enabled/") {
+                if let Some(start) = line.find("/etc/nginx/sites-enabled/") {
+                    if let Some(domain_end) = line[start + 25..].find(':') {
+                        let domain = &line[start + 25..start + 25 + domain_end];
+                        if !broken.contains(&domain.to_string()) {
+                            broken.push(domain.to_string());
+                        }
+                    }
+                }
+            } else if line.contains("cannot load certificate") {
+                // Extraire le domaine du path du certificat
+                if let Some(start) = line.find("/etc/letsencrypt/live/") {
+                    if let Some(end) = line[start + 22..].find('/') {
+                        let domain = &line[start + 22..start + 22 + end];
+                        // Trouver la config correspondante
+                        let config_path = format!("{}/{}", NGINX_SITES_ENABLED, domain);
+                        if Path::new(&config_path).exists() && !broken.contains(&domain.to_string()) {
+                            broken.push(domain.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(broken)
+}
+
+fn clean_broken_configs(dry_run: bool) -> Result<(), String> {
+    println!("🧹 Cleaning broken configurations...\n");
+
+    let broken = detect_broken_configs()?;
+
+    if broken.is_empty() {
+        println!("✓ No broken configurations found");
+        return Ok(());
+    }
+
+    println!("Found {} broken configuration(s):", broken.len());
+    for domain in &broken {
+        println!("   - {}", domain);
+    }
+
+    if dry_run {
+        println!("\n⚠️  Dry run mode: no changes made");
+        return Ok(());
+    }
+
+    println!("\n🗑️  Removing broken configurations...");
+    for domain in &broken {
+        match remove_config_files(domain) {
+            Ok(_) => println!("   ✓ Removed: {}", domain),
+            Err(e) => println!("   ⚠️  Failed to remove {}: {}", domain, e),
+        }
+    }
+
+    println!("\n✅ Cleanup complete!");
+    Ok(())
+}
+
+fn remove_config_files(domain: &str) -> Result<(), String> {
+    let available_path = format!("{}/{}", NGINX_SITES_AVAILABLE, domain);
+    let enabled_path = format!("{}/{}", NGINX_SITES_ENABLED, domain);
+
+    if Path::new(&enabled_path).exists() {
+        fs::remove_file(&enabled_path).map_err(|e| format!("Failed to remove symlink: {}", e))?;
+    }
+
+    if Path::new(&available_path).exists() {
+        fs::remove_file(&available_path).map_err(|e| format!("Failed to remove config: {}", e))?;
+    }
+
+    Ok(())
+}
+
+fn config_exists(domain: &str) -> bool {
+    let available_path = format!("{}/{}", NGINX_SITES_AVAILABLE, domain);
+    Path::new(&available_path).exists()
 }
 
 fn check_requirements() -> Result<(), String> {
@@ -203,6 +488,14 @@ fn check_requirements() -> Result<(), String> {
     } else {
         println!("❌ Not found");
         all_ok = false;
+    }
+
+    // Check backup directory
+    print!("   backup directory:      ");
+    if Path::new(BACKUP_DIR).exists() {
+        println!("✓ {}", BACKUP_DIR);
+    } else {
+        println!("ℹ️  Will be created: {}", BACKUP_DIR);
     }
 
     if all_ok {
@@ -257,12 +550,20 @@ fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>) -> Result
     };
 
     println!("➕ Adding domain: {}", domain);
+    
+    // Backup avant modification
+    create_backup()?;
+    
     generate_nginx_config(&config)?;
     enable_site(domain)?;
 
     if ssl {
         setup_ssl(&config)?;
     }
+
+    // Test avant reload
+    test_nginx()?;
+    reload_nginx()?;
 
     println!("✅ Domain {} added successfully!", domain);
     Ok(())
@@ -271,18 +572,14 @@ fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>) -> Result
 fn remove_domain(domain: &str) -> Result<(), String> {
     println!("➖ Removing domain: {}", domain);
 
-    let available_path = format!("{}/{}", NGINX_SITES_AVAILABLE, domain);
-    let enabled_path = format!("{}/{}", NGINX_SITES_ENABLED, domain);
+    // Backup avant suppression
+    create_backup()?;
 
-    if Path::new(&enabled_path).exists() {
-        fs::remove_file(&enabled_path).map_err(|e| format!("Failed to remove symlink: {}", e))?;
-    }
-
-    if Path::new(&available_path).exists() {
-        fs::remove_file(&available_path).map_err(|e| format!("Failed to remove config: {}", e))?;
-    }
-
+    remove_config_files(domain)?;
+    
+    test_nginx()?;
     reload_nginx()?;
+    
     println!("✅ Domain {} removed successfully!", domain);
     Ok(())
 }
@@ -363,12 +660,16 @@ fn enable_site(domain: &str) -> Result<(), String> {
     let available_path = format!("{}/{}", NGINX_SITES_AVAILABLE, domain);
     let enabled_path = format!("{}/{}", NGINX_SITES_ENABLED, domain);
 
-    if !Path::new(&enabled_path).exists() {
-        std::os::unix::fs::symlink(&available_path, &enabled_path)
-            .map_err(|e| format!("Failed to create symlink: {}", e))?;
-        println!("   ✓ Site enabled");
+    // Supprimer le symlink existant s'il existe
+    if Path::new(&enabled_path).exists() {
+        fs::remove_file(&enabled_path)
+            .map_err(|e| format!("Failed to remove existing symlink: {}", e))?;
     }
 
+    std::os::unix::fs::symlink(&available_path, &enabled_path)
+        .map_err(|e| format!("Failed to create symlink: {}", e))?;
+    
+    println!("   ✓ Site enabled");
     Ok(())
 }
  
@@ -401,15 +702,12 @@ fn setup_ssl(config: &DomainConfig) -> Result<(), String> {
 }
 
 fn test_nginx() -> Result<(), String> {
-    println!("🧪 Testing nginx configuration...");
-
     let output = Command::new("nginx")
         .arg("-t")
         .output()
         .map_err(|e| format!("Failed to run nginx -t: {}", e))?;
 
     if output.status.success() {
-        println!("✅ Nginx configuration is valid!");
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -418,15 +716,13 @@ fn test_nginx() -> Result<(), String> {
 }
 
 fn reload_nginx() -> Result<(), String> {
-    println!("🔄 Reloading nginx...");
-
     let output = Command::new("systemctl")
         .args(&["reload", "nginx"])
         .output()
         .map_err(|e| format!("Failed to reload nginx: {}", e))?;
 
     if output.status.success() {
-        println!("✅ Nginx reloaded successfully!");
+        println!("   ✓ Nginx reloaded successfully!");
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -448,6 +744,20 @@ fn show_status() -> Result<(), String> {
         println!("✓ active");
     } else {
         println!("○ inactive");
+    }
+
+    // Configuration test
+    print!("Configuration: ");
+    match test_nginx() {
+        Ok(_) => println!("✓ valid"),
+        Err(_) => println!("❌ invalid"),
+    }
+
+    // List backups
+    let backups = list_backups().unwrap_or_default();
+    println!("\nBackups: {} available", backups.len());
+    if !backups.is_empty() {
+        println!("   Latest: {}", backups[0]);
     }
 
     // List domains

@@ -1,106 +1,89 @@
 #!/usr/bin/env node
 
-const https = require("https");
+const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const GITHUB_REPO = "Nehonix-Team/xynginc";
-const VERSION = "latest";
-const BIN_DIR = path.join(__dirname, "../bin");
-const BINARY_NAME = "xynginc";
+const platform = os.platform();
 
-async function downloadBinary() {
-  const platform = os.platform();
-  const arch = os.arch();
+console.log("📦 [XyNginC] Post-install setup...");
 
-  // Only support Linux for now
-  if (platform !== "linux") {
-    console.log(
-      `⚠️  [XyNginC] Platform ${platform} not supported. Only Linux is supported.`
-    );
-    console.log("   You'll need to manually install the xynginc binary.");
-    return;
-  }
-
-  console.log(`📦 [XyNginC] Downloading binary for ${platform}-${arch}...`);
-
-  // const binaryName = `${BINARY_NAME}-${platform}-${arch}`; // no need cause it will be always a 'linux' platform
-  const binaryName = BINARY_NAME;
-  const downloadUrl =
-    VERSION === "latest"
-      ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
-      : `https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${binaryName}`;
-
-  // Create bin directory
-  if (!fs.existsSync(BIN_DIR)) {
-    fs.mkdirSync(BIN_DIR, { recursive: true });
-  }
-
-  const localPath = path.join(BIN_DIR, BINARY_NAME);
-
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(localPath);
-
-    console.log(`   Downloading from: ${downloadUrl}`);
-
-    https
-      .get(downloadUrl, (response) => {
-        // Handle redirects
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          https
-            .get(response.headers.location, (redirectResponse) => {
-              if (redirectResponse.statusCode !== 200) {
-                reject(
-                  new Error(
-                    `Failed to download: HTTP ${redirectResponse.statusCode}`
-                  )
-                );
-                return;
-              }
-
-              redirectResponse.pipe(file);
-              file.on("finish", () => {
-                file.close();
-                fs.chmodSync(localPath, 0o755); // Make executable
-                console.log(
-                  "✅ [XyNginC] Binary downloaded and installed successfully!"
-                );
-                console.log(`   Location: ${localPath}`);
-                resolve();
-              });
-            })
-            .on("error", reject);
-        } else if (response.statusCode === 200) {
-          response.pipe(file);
-          file.on("finish", () => {
-            file.close();
-            fs.chmodSync(localPath, 0o755); // Make executable
-            console.log(
-              "✅ [XyNginC] Binary downloaded and installed successfully!"
-            );
-            console.log(`   Location: ${localPath}`);
-            resolve();
-          });
-        } else {
-          reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
-        }
-      })
-      .on("error", (err) => {
-        if (fs.existsSync(localPath)) {
-          fs.unlinkSync(localPath); // Delete partial file
-        }
-        reject(err);
-      });
-  });
+// Only support Linux
+if (platform !== "linux") {
+  console.log(
+    `⚠️  [XyNginC] Platform ${platform} not supported. Only Linux is supported.`
+  );
+  console.log("   XyNginC will not be installed automatically.");
+  process.exit(0);
 }
 
-// Run download
-downloadBinary().catch((error) => {
-  console.error(`❌ [XyNginC] Failed to download binary: ${error.message}`);
-  console.log("   You can manually install xynginc from:");
-  console.log(`   https://github.com/${GITHUB_REPO}/releases`);
-  console.log("   Or set a custom binaryPath in your plugin config.");
+// Check if xynginc is already installed
+try {
+  execSync("which xynginc", { stdio: "pipe" });
+  const version = execSync("xynginc --version", {
+    encoding: "utf8",
+    stdio: "pipe",
+  }).trim();
+  console.log(`✅ [XyNginC] Already installed: ${version}`);
+  process.exit(0);
+} catch (error) {
+  // Not installed, continue with installation
+}
+
+console.log("🔧 [XyNginC] Binary not found, running installation script...");
+console.log("");
+
+const installScript = path.join(__dirname, "../scripts/install.sh");
+
+// Check if install script exists
+if (!fs.existsSync(installScript)) {
+  console.error("❌ [XyNginC] Installation script not found!");
+  console.log("   Please download and run manually:");
+  console.log(
+    "   curl -fsSL https://raw.githubusercontent.com/Nehonix-Team/xynginc/main/scripts/install.sh | sudo bash"
+  );
+  process.exit(0);
+}
+
+// Make script executable
+try {
+  fs.chmodSync(installScript, 0o755);
+} catch (error) {
+  console.error(
+    `⚠️  [XyNginC] Could not make script executable: ${error.message}`
+  );
+}
+
+// Run installation script
+try {
+  console.log("   Running installation script (requires sudo)...");
+  console.log("   You may be prompted for your password.");
+  console.log("");
+
+  execSync(`sudo bash "${installScript}"`, {
+    stdio: "inherit",
+    env: { ...process.env, SKIP_PROMPTS: "1" },
+  });
+
+  console.log("");
+  console.log("✅ [XyNginC] Installation completed successfully!");
+} catch (error) {
+  console.error("");
+  console.error("❌ [XyNginC] Installation failed!");
+  console.error(`   Error: ${error.message}`);
+  console.log("");
+  console.log("   You can install manually by running:");
+  console.log(`   sudo bash ${installScript}`);
+  console.log("");
+  console.log("   Or download directly:");
+  console.log(
+    "   curl -L -o xynginc https://github.com/Nehonix-Team/xynginc/releases/latest/download/xynginc"
+  );
+  console.log("   chmod +x xynginc");
+  console.log("   sudo mv xynginc /usr/local/bin/");
+  console.log("");
+
   // Don't fail npm install
   process.exit(0);
-});
+}
