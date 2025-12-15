@@ -14,6 +14,7 @@ export interface XyNginCDomainConfig {
   port: number;
   ssl?: boolean;
   email?: string;
+  host?: string;
 }
 
 export interface XyNginCConfig {
@@ -45,7 +46,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
 
   return Plugin.create({
     name: "xynginc",
-    version: "1.0.0",
+    version: "1.0.7",
     description: "XyPriss Nginx Controller - Automatic Nginx & SSL management",
 
     onRegister: async () => {
@@ -135,6 +136,11 @@ function validateConfig(config: XyNginCConfig): void {
       throw new Error(
         `[XyNginC] Configuration error: 'email' is required when SSL is enabled for ${domain.domain}`
       );
+    }
+
+    // Set default host to localhost if not provided
+    if (!domain.host) {
+      domain.host = "localhost";
     }
   }
 }

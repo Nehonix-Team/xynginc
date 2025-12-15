@@ -1,0 +1,1 @@
+curl -L -o xynginc https://github.com/Nehonix-Team/xynginc/releases/latest/download/xynginc && chmod +x xynginc && sudo mv xynginc /usr/local/bin/ && xynginc --version

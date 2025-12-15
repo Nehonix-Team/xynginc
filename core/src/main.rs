@@ -11,7 +11,7 @@ const BACKUP_DIR: &str = "/var/backups/xynginc";
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.0.0")]
+#[command(version = "1.0.1")]
 #[command(about = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -103,6 +103,12 @@ struct DomainConfig {
     #[serde(default)]
     ssl: bool,
     email: Option<String>,
+    #[serde(default = "default_host")]
+    host: String,
+}
+
+fn default_host() -> String {
+    "localhost".to_string()
 }
 
 fn main() {
@@ -124,7 +130,7 @@ fn main() {
             port,
             ssl,
             email,
-        } => add_domain(domain, *port, *ssl, email.as_deref()),
+        } => add_domain(domain, *port, *ssl, email.as_deref(), None),
         Commands::Remove { domain } => remove_domain(domain),
         Commands::Test => test_nginx(),
         Commands::Reload => reload_nginx(),
@@ -537,7 +543,7 @@ fn list_domains() -> Result<(), String> {
     Ok(())
 }
 
-fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>) -> Result<(), String> {
+fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host: Option<&str>) -> Result<(), String> {
     if ssl && email.is_none() {
         return Err("Email is required when SSL is enabled".to_string());
     }
@@ -547,6 +553,7 @@ fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>) -> Result
         port,
         ssl,
         email: email.map(|s| s.to_string()),
+        host: host.unwrap_or("localhost").to_string(),
     };
 
     println!("➕ Adding domain: {}", domain);
@@ -608,7 +615,7 @@ server {{
     ssl_prefer_server_ciphers on;
 
     location / {{
-        proxy_pass http://127.0.0.1:{};
+        proxy_pass http://{}:{};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -620,7 +627,7 @@ server {{
     }}
 }}
 "#,
-            config.domain, config.domain, config.domain, config.domain, config.port
+            config.domain, config.domain, config.domain, config.domain, config.host, config.port
         )
     } else {
         format!(
@@ -629,7 +636,7 @@ server {{
     server_name {};
 
     location / {{
-        proxy_pass http://127.0.0.1:{};
+        proxy_pass http://{}:{};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -641,7 +648,7 @@ server {{
     }}
 }}
 "#,
-            config.domain, config.port
+            config.domain, config.host, config.port
         )
     };
 
