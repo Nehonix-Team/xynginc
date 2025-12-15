@@ -8,13 +8,18 @@ use std::process::Command;
 mod requirements;
 use requirements::interactive_install;
 
+// Embedded templates - included directly in the binary
+const NON_SSL_TEMPLATE: &str = include_str!("configs/non_ssl_template.conf");
+const SSL_TEMPLATE: &str = include_str!("configs/ssl_template.conf");
+const ERROR_HTML: &str = include_str!("configs/error.html");
+
 const NGINX_SITES_AVAILABLE: &str = "/etc/nginx/sites-available";
 const NGINX_SITES_ENABLED: &str = "/etc/nginx/sites-enabled";
 const BACKUP_DIR: &str = "/var/backups/xynginc";
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.1.0")]
+#[command(version = "1.1.2")]
 #[command(about = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -602,13 +607,13 @@ fn remove_domain(domain: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Load configuration template from file
+/// Load configuration template from embedded content
 fn load_template(template_path: &str) -> Result<String, String> {
-    let template_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/configs");
-    let full_path = template_dir.join(template_path);
-    
-    fs::read_to_string(&full_path)
-        .map_err(|e| format!("Failed to read template {}: {}", template_path, e))
+    match template_path {
+        "non_ssl_template.conf" => Ok(NON_SSL_TEMPLATE.to_string()),
+        "ssl_template.conf" => Ok(SSL_TEMPLATE.to_string()),
+        _ => Err(format!("Unknown template: {}", template_path)),
+    }
 }
 
 /// Replace template variables with actual values
@@ -672,18 +677,10 @@ fn ensure_error_page_exists() -> Result<(), String> {
 
     // Copy error page if it doesn't exist
     if !Path::new(&error_page_path).exists() {
-        let template_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/configs");
-        let template_path = template_dir.join("error.html");
+        fs::write(&error_page_path, ERROR_HTML)
+            .map_err(|e| format!("Failed to write error page: {}", e))?;
         
-        if template_path.exists() {
-            let error_html = fs::read_to_string(&template_path)
-                .map_err(|e| format!("Failed to read error page template: {}", e))?;
-            
-            fs::write(&error_page_path, error_html)
-                .map_err(|e| format!("Failed to write error page: {}", e))?;
-            
-            println!("   ✓ Error page created at {}", error_page_path);
-        }
+        println!("   ✓ Error page created at {}", error_page_path);
     }
 
     Ok(())

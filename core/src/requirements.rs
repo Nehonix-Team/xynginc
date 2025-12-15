@@ -8,7 +8,7 @@
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::io::Write;
 
 /// System requirements that XyNginC needs to function
@@ -208,12 +208,9 @@ fn fix_apt_repositories() -> Result<(), String> {
                 .open(sources_list)
                 .map_err(|e| format!("Failed to open sources.list: {}", e))?;
             
-            writeln!(file, "\n# Dépôts Kali officiels")
-                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
-            writeln!(file, "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware")
-                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
-            writeln!(file, "deb-src http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware")
-                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+            writeln!(file, "\n# Dépôts Kali officiels").map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+            writeln!(file, "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware").map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+            writeln!(file, "deb-src http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware").map_err(|e| format!("Failed to write to sources.list: {}", e))?;
         }
     }
     
@@ -241,94 +238,105 @@ fn fix_apt_repositories() -> Result<(), String> {
     Ok(())
 }
 
-/// Install missing system requirements
+/// Install missing system requirements with interactive mode
 pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result<(), String> {
     println!("\n📦 Installing missing requirements...\n");
 
-    let mut install_commands = vec![];
+    let mut packages_to_install = vec![];
 
     // Check if we need to install nginx
     if !requirements.nginx {
         println!("📋 Adding nginx installation...");
-        install_commands.push(("nginx", "apt-get install -y nginx"));
+        packages_to_install.push("nginx");
     }
 
     // Check if we need to install certbot
     if !requirements.certbot {
         println!("📋 Adding certbot installation...");
-        install_commands.push(("certbot", "apt-get install -y certbot python3-certbot-nginx"));
+        packages_to_install.push("certbot");
+        packages_to_install.push("python3-certbot-nginx");
     }
 
-    // Create missing directories
+    // Create missing directories first
     if !requirements.sites_available_dir {
         println!("📋 Creating sites-available directory...");
-        if let Err(e) = Command::new("mkdir")
+        Command::new("mkdir")
             .args(&["-p", "/etc/nginx/sites-available"])
-            .output() 
-        {
-            return Err(format!("Failed to create sites-available directory: {}", e));
-        }
+            .status()
+            .map_err(|e| format!("Failed to create sites-available directory: {}", e))?;
     }
 
     if !requirements.sites_enabled_dir {
         println!("📋 Creating sites-enabled directory...");
-        if let Err(e) = Command::new("mkdir")
+        Command::new("mkdir")
             .args(&["-p", "/etc/nginx/sites-enabled"])
-            .output() 
-        {
-            return Err(format!("Failed to create sites-enabled directory: {}", e));
-        }
+            .status()
+            .map_err(|e| format!("Failed to create sites-enabled directory: {}", e))?;
     }
 
     if !requirements.backup_dir {
         println!("📋 Creating backup directory...");
-        if let Err(e) = fs::create_dir_all("/var/backups/xynginc") {
-            return Err(format!("Failed to create backup directory: {}", e));
-        }
+        fs::create_dir_all("/var/backups/xynginc")
+            .map_err(|e| format!("Failed to create backup directory: {}", e))?;
     }
 
-    // Execute installation commands
-    for (package, command) in install_commands {
-        println!("🔄 Installing {}...", package);
+    // Install packages if needed
+    if !packages_to_install.is_empty() {
+        println!("🔄 Installing packages: {}", packages_to_install.join(", "));
+        println!("   This may take a few moments and require confirmation...\n");
         
-        let args: Vec<&str> = command.split_whitespace().collect();
-        if args.is_empty() {
-            continue;
-        }
-
-        let output = Command::new(args[0])
-            .args(&args[1..])
-            .output()
-            .map_err(|e| format!("Failed to execute command '{}': {}", command, e))?;
-
-        // Check if installation failed due to APT errors
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        // Update package list first
+        println!("📥 Updating package lists...");
+        let update_status = Command::new("apt-get")
+            .arg("update")
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .map_err(|e| format!("Failed to update packages: {}", e))?;
+        
+        if !update_status.success() {
+            println!("\n⚠️  Package update had issues. Attempting to fix APT repositories...");
+            fix_apt_repositories()?;
             
-            // Detect if it's an APT repository error
-            if detect_apt_errors(&stderr) {
-                println!("   ⚠️  APT repository error detected during {} installation", package);
-                
-                // Try to fix APT repositories
-                fix_apt_repositories()?;
-                
-                // Retry installation
-                println!("   🔄 Retrying {} installation...", package);
-                let retry_output = Command::new(args[0])
-                    .args(&args[1..])
-                    .output()
-                    .map_err(|e| format!("Failed to retry installation: {}", e))?;
-                
-                if !retry_output.status.success() {
-                    let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
-                    return Err(format!("Failed to install {} after fixing repositories: {}", package, retry_stderr));
-                }
-            } else {
-                return Err(format!("Failed to install {}: {}", package, stderr));
+            // Retry update
+            println!("\n🔄 Retrying package update...");
+            let retry_update = Command::new("apt-get")
+                .arg("update")
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .status()
+                .map_err(|e| format!("Failed to retry update: {}", e))?;
+            
+            if !retry_update.success() {
+                return Err("Failed to update package lists after fixing repositories".to_string());
             }
         }
         
-        println!("   ✓ {} installed successfully", package);
+        // Install packages with full interactivity
+        println!("\n📦 Installing {}...", packages_to_install.join(", "));
+        let mut install_cmd = Command::new("apt-get");
+        install_cmd.arg("install")
+                   .arg("-y");
+        
+        for package in &packages_to_install {
+            install_cmd.arg(package);
+        }
+        
+        // Use inherited stdio for full interactivity
+        let install_status = install_cmd
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .map_err(|e| format!("Failed to install packages: {}", e))?;
+        
+        if !install_status.success() {
+            return Err("Package installation failed. Check the errors above.".to_string());
+        }
+        
+        println!("\n   ✓ Packages installed successfully");
     }
 
     // Configure nginx if it was just installed
@@ -342,7 +350,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
 
 /// Configure nginx for XyNginC usage
 fn configure_nginx() -> Result<(), String> {
-    println!("⚙️  Configuring nginx...");
+    println!("\n⚙️  Configuring nginx...");
 
     // Ensure nginx service is enabled and started
     let output = Command::new("systemctl")
@@ -362,7 +370,10 @@ fn configure_nginx() -> Result<(), String> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to start nginx service: {}", stderr));
+        // Don't fail if nginx is already running
+        if !stderr.contains("already") {
+            return Err(format!("Failed to start nginx service: {}", stderr));
+        }
     }
 
     // Create or update nginx configuration to include sites-enabled
@@ -374,7 +385,7 @@ fn configure_nginx() -> Result<(), String> {
 
         // Check if sites-enabled is already included
         if !conf_content.contains("sites-enabled") {
-            println!("🔧 Adding sites-enabled to nginx configuration...");
+            println!("   🔧 Adding sites-enabled to nginx configuration...");
             
             // Find the http block and add include directive
             let mut updated_content = String::new();
@@ -490,7 +501,7 @@ pub fn interactive_install() -> Result<(), String> {
 
     println!("   → Proceeding with installation...");
 
-    // Install missing requirements (with automatic APT fixing)
+    // Install missing requirements (with automatic APT fixing and full interactivity)
     install_missing_requirements(&requirements)?;
     
     // Final verification
