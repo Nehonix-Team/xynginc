@@ -14,7 +14,7 @@ const BACKUP_DIR: &str = "/var/backups/xynginc";
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.0.1")]
+#[command(version = "1.0.2")]
 #[command(about = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL", long_about = None)]
 struct Cli {
     #[command(subcommand)]
