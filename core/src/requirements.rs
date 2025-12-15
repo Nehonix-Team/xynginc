@@ -3,11 +3,13 @@
  * 
  * This module handles the installation and configuration of system requirements
  * for XyNginC including nginx, certbot, and necessary directory structures.
+ * Includes automatic APT repository error detection and fixing.
  */
 
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::io::Write;
 
 /// System requirements that XyNginC needs to function
 #[derive(Debug, Clone)]
@@ -89,6 +91,156 @@ pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
     Ok(requirements)
 }
 
+/// Detect if APT has repository errors
+fn detect_apt_errors(error_message: &str) -> bool {
+    // Common APT repository errors
+    let error_patterns = vec![
+        "n'a pas de fichier Release",
+        "does not have a Release file",
+        "Policy will reject signature",
+        "NO_PUBKEY",
+        "The repository",
+        "is not signed",
+    ];
+    
+    for pattern in error_patterns {
+        if error_message.contains(pattern) {
+            return true;
+        }
+    }
+    
+    false
+}
+
+/// Fix common APT repository problems
+fn fix_apt_repositories() -> Result<(), String> {
+    println!("\n🔧 Detecting APT repository issues...");
+    
+    // Test apt-get update to see if there are errors
+    let test_output = Command::new("apt-get")
+        .arg("update")
+        .output()
+        .map_err(|e| format!("Failed to test apt-get: {}", e))?;
+    
+    let stderr = String::from_utf8_lossy(&test_output.stderr);
+    let stdout = String::from_utf8_lossy(&test_output.stdout);
+    let combined_output = format!("{}\n{}", stdout, stderr);
+    
+    if !detect_apt_errors(&combined_output) && test_output.status.success() {
+        println!("✓ APT repositories are healthy");
+        return Ok(());
+    }
+    
+    println!("⚠️  APT repository errors detected. Attempting automatic fix...\n");
+    
+    // Backup sources.list.d
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let backup_dir = format!("/etc/apt/sources.list.d.backup.{}", timestamp);
+    
+    println!("📋 Step 1: Backing up current sources...");
+    if Path::new("/etc/apt/sources.list.d").exists() {
+        let output = Command::new("cp")
+            .args(&["-r", "/etc/apt/sources.list.d", &backup_dir])
+            .output()
+            .map_err(|e| format!("Failed to backup sources: {}", e))?;
+        
+        if output.status.success() {
+            println!("   ✓ Backup created at {}", backup_dir);
+        }
+    }
+    
+    println!("\n📋 Step 2: Disabling problematic repositories...");
+    
+    // List of problematic repository files to disable
+    let problematic_repos = vec![
+        "/etc/apt/sources.list.d/pgdg.list",
+        "/etc/apt/sources.list.d/docker.list",
+        "/etc/apt/sources.list.d/llvm.list",
+    ];
+    
+    for repo_file in problematic_repos {
+        if Path::new(repo_file).exists() {
+            let disabled_file = format!("{}.disabled", repo_file);
+            println!("   → Disabling {}", repo_file);
+            
+            fs::rename(repo_file, &disabled_file)
+                .map_err(|e| format!("Failed to disable {}: {}", repo_file, e))?;
+        }
+    }
+    
+    // Scan for files containing problematic URLs
+    if let Ok(entries) = fs::read_dir("/etc/apt/sources.list.d") {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("list") {
+                    if let Ok(content) = fs::read_to_string(&path) {
+                        let has_problems = content.contains("ftp.postgresql.org") ||
+                                          content.contains("download.docker.com/linux/ubuntu") ||
+                                          content.contains("apt.llvm.org");
+                        
+                        if has_problems {
+                            let disabled_path = format!("{}.disabled", path.display());
+                            println!("   → Disabling {:?}", path.file_name().unwrap());
+                            fs::rename(&path, &disabled_path)
+                                .map_err(|e| format!("Failed to disable {:?}: {}", path, e))?;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    println!("   ✓ Problematic repositories disabled");
+    
+    println!("\n📋 Step 3: Verifying Kali main repositories...");
+    
+    // Ensure Kali official repos are present
+    let sources_list = "/etc/apt/sources.list";
+    if Path::new(sources_list).exists() {
+        let content = fs::read_to_string(sources_list)
+            .map_err(|e| format!("Failed to read sources.list: {}", e))?;
+        
+        if !content.contains("kali-rolling") {
+            println!("   → Adding Kali official repositories");
+            let mut file = fs::OpenOptions::new()
+                .append(true)
+                .open(sources_list)
+                .map_err(|e| format!("Failed to open sources.list: {}", e))?;
+            
+            writeln!(file, "\n# Dépôts Kali officiels")
+                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+            writeln!(file, "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware")
+                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+            writeln!(file, "deb-src http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware")
+                .map_err(|e| format!("Failed to write to sources.list: {}", e))?;
+        }
+    }
+    
+    println!("   ✓ Kali repositories verified");
+    
+    println!("\n📋 Step 4: Updating package lists...");
+    
+    let update_output = Command::new("apt-get")
+        .arg("update")
+        .output()
+        .map_err(|e| format!("Failed to update package lists: {}", e))?;
+    
+    if !update_output.status.success() {
+        let stderr = String::from_utf8_lossy(&update_output.stderr);
+        println!("   ⚠️  Warning: Some repositories still have issues");
+        println!("   {}", stderr);
+    } else {
+        println!("   ✓ Package lists updated successfully");
+    }
+    
+    println!("\n✅ APT repositories fixed!");
+    println!("\n💡 Note: Disabled repositories are saved with .disabled extension");
+    println!("   To re-enable: sudo mv /etc/apt/sources.list.d/repo.list.disabled /etc/apt/sources.list.d/repo.list\n");
+    
+    Ok(())
+}
+
 /// Install missing system requirements
 pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result<(), String> {
     println!("\n📦 Installing missing requirements...\n");
@@ -98,13 +250,13 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
     // Check if we need to install nginx
     if !requirements.nginx {
         println!("📋 Adding nginx installation...");
-        install_commands.push(("nginx", "apt-get update && apt-get install -y nginx"));
+        install_commands.push(("nginx", "apt-get install -y nginx"));
     }
 
     // Check if we need to install certbot
     if !requirements.certbot {
         println!("📋 Adding certbot installation...");
-        install_commands.push(("certbot", "apt-get update && apt-get install -y certbot python3-certbot-nginx"));
+        install_commands.push(("certbot", "apt-get install -y certbot python3-certbot-nginx"));
     }
 
     // Create missing directories
@@ -139,22 +291,39 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
     for (package, command) in install_commands {
         println!("🔄 Installing {}...", package);
         
-        // Split command into parts for execution
-        let parts: Vec<&str> = command.split(" && ").collect();
-        
-        for part in parts {
-            let args: Vec<&str> = part.split_whitespace().collect();
-            if args.is_empty() {
-                continue;
-            }
+        let args: Vec<&str> = command.split_whitespace().collect();
+        if args.is_empty() {
+            continue;
+        }
 
-            let output = Command::new(args[0])
-                .args(&args[1..])
-                .output()
-                .map_err(|e| format!("Failed to execute command '{}': {}", part, e))?;
+        let output = Command::new(args[0])
+            .args(&args[1..])
+            .output()
+            .map_err(|e| format!("Failed to execute command '{}': {}", command, e))?;
 
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
+        // Check if installation failed due to APT errors
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            // Detect if it's an APT repository error
+            if detect_apt_errors(&stderr) {
+                println!("   ⚠️  APT repository error detected during {} installation", package);
+                
+                // Try to fix APT repositories
+                fix_apt_repositories()?;
+                
+                // Retry installation
+                println!("   🔄 Retrying {} installation...", package);
+                let retry_output = Command::new(args[0])
+                    .args(&args[1..])
+                    .output()
+                    .map_err(|e| format!("Failed to retry installation: {}", e))?;
+                
+                if !retry_output.status.success() {
+                    let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
+                    return Err(format!("Failed to install {} after fixing repositories: {}", package, retry_stderr));
+                }
+            } else {
                 return Err(format!("Failed to install {}: {}", package, stderr));
             }
         }
@@ -205,7 +374,7 @@ fn configure_nginx() -> Result<(), String> {
 
         // Check if sites-enabled is already included
         if !conf_content.contains("sites-enabled") {
-            println!("📝 Adding sites-enabled to nginx configuration...");
+            println!("🔧 Adding sites-enabled to nginx configuration...");
             
             // Find the http block and add include directive
             let mut updated_content = String::new();
@@ -292,25 +461,36 @@ pub fn interactive_install() -> Result<(), String> {
     
     println!("   - Will install: {}", install_list.trim());
 
-    println!("\n❓ Do you want to proceed with installation? (y/N): ");
+    // Check for non-interactive mode via environment variable or terminal detection
+    let is_non_interactive = std::env::var("XYNC_INSTALL_MODE").ok() == Some("non-interactive".to_string())
+        || !atty::is(atty::Stream::Stdin);
     
-    // Read user input for confirmation
-    let mut user_input = String::new();
-    std::io::stdin()
-        .read_line(&mut user_input)
-        .map_err(|e| format!("Failed to read user input: {}", e))?;
+    let proceed = if is_non_interactive {
+        // Non-interactive mode (automated installation)
+        println!("\n→ Automated installation mode detected, proceeding...");
+        true
+    } else {
+        // Interactive mode - ask for confirmation
+        println!("\n❓ Do you want to proceed with installation? (y/N): ");
+        
+        // Read user input for confirmation
+        let mut user_input = String::new();
+        std::io::stdin()
+            .read_line(&mut user_input)
+            .map_err(|e| format!("Failed to read user input: {}", e))?;
+        
+        let user_input = user_input.trim().to_lowercase();
+        user_input == "y" || user_input == "yes"
+    };
     
-    let user_input = user_input.trim().to_lowercase();
-    
-    // Check if user wants to proceed
-    if user_input != "y" && user_input != "yes" {
+    if !proceed {
         println!("Installation cancelled by user.");
         return Ok(());
     }
 
     println!("   → Proceeding with installation...");
 
-    // Install missing requirements
+    // Install missing requirements (with automatic APT fixing)
     install_missing_requirements(&requirements)?;
     
     // Final verification

@@ -1,6 +1,6 @@
 {
   "name": "xynginc",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "xynginc": "./bin/xynginc"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:rust",
     "build:rust": "cd core && cargo build --release && cp target/release/xynginc ../bin/",
     "build:all": "npm run build:rust && npm run build",
     "dev": "tsc --watch",

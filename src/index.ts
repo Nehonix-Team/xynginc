@@ -1,5 +1,5 @@
 import { Plugin } from "xypriss";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
@@ -62,8 +62,6 @@ export default function XNCP(options: XyNginCPluginOptions) {
     onServerStart: async (server) => {
       Logger.info("[XyNginC] Initializing Nginx Controller...");
 
-      // Logger.debug(`server: ${server}`);
-
       try {
         // 1. Ensure binary exists
         const binary = await ensureBinary(binaryPath, autoDownload, version);
@@ -113,7 +111,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
 
         Logger.info("[XyNginC] Server methods available: server.xynginc.*");
       } catch (error) {
-        Logger.error(`[XyNginC] ❌ Failed to initialize: ${error}`);
+        Logger.error(`[XyNginC] ✖ Failed to initialize: ${error}`);
         throw error;
       }
     },
@@ -285,18 +283,35 @@ async function checkRequirements(binaryPath: string): Promise<boolean> {
 }
 
 /**
- * Install system requirements using the binary
+ * Install system requirements using the binary with interactive mode
+ * This spawns the process with inherited stdio to allow user interaction
  */
 async function installRequirementsHandler(binaryPath: string): Promise<void> {
-  try {
-    Logger.info("[XyNginC] Installing system requirements...");
-    const { stdout, stderr } = await execAsync(`sudo ${binaryPath} install`);
-    Logger.info(stdout.trim());
-    if (stderr) Logger.error(stderr.trim());
-    Logger.success("[XyNginC] ✓ System requirements installed successfully");
-  } catch (error: any) {
-    throw new Error(`Failed to install system requirements: ${error.message}`);
-  }
+  return new Promise((resolve, reject) => {
+    Logger.info("[XyNginC] Launching interactive installer...");
+    Logger.info("[XyNginC] Please respond to any prompts in the terminal.");
+
+    // Spawn the process with inherited stdio for full interactivity
+    const installProcess = spawn("sudo", [binaryPath, "install"], {
+      stdio: "inherit", // This allows the subprocess to use the parent's stdin/stdout/stderr
+      shell: true,
+    });
+
+    installProcess.on("close", (code) => {
+      if (code === 0) {
+        Logger.success(
+          "[XyNginC] ✓ System requirements installed successfully"
+        );
+        resolve();
+      } else {
+        reject(new Error(`Installation failed with exit code ${code}`));
+      }
+    });
+
+    installProcess.on("error", (error) => {
+      reject(new Error(`Failed to start installation: ${error.message}`));
+    });
+  });
 }
 
 /**
