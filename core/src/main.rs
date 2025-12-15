@@ -591,67 +591,49 @@ fn remove_domain(domain: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Load configuration template from file
+fn load_template(template_path: &str) -> Result<String, String> {
+    let template_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/configs");
+    let full_path = template_dir.join(template_path);
+    
+    fs::read_to_string(&full_path)
+        .map_err(|e| format!("Failed to read template {}: {}", template_path, e))
+}
+
+/// Replace template variables with actual values
+fn replace_template_variables(template: &str, variables: &[(&str, &str)]) -> String {
+    let mut result = template.to_string();
+    
+    for (key, value) in variables {
+        let placeholder = format!("{{{{{} }}}}", key);
+        result = result.replace(&placeholder, value);
+    }
+    
+    result
+}
+
+/// Generate nginx configuration using templates
 fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
-    let nginx_config = if config.ssl {
-        format!(
-            r#"server {{
-    listen 80;
-    server_name {};
-
-    location / {{
-        return 301 https://$host$request_uri;
-    }}
-}}
-
-server {{
-    listen 443 ssl http2;
-    server_name {};
-
-    ssl_certificate /etc/letsencrypt/live/{}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{}/privkey.pem;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-
-    location / {{
-        proxy_pass http://{}:{};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }}
-}}
-"#,
-            config.domain, config.domain, config.domain, config.domain, config.host, config.port
-        )
+    // Load appropriate template based on SSL configuration
+    let template_name = if config.ssl {
+        "ssl_template.conf"
     } else {
-        format!(
-            r#"server {{
-    listen 80;
-    server_name {};
-
-    location / {{
-        proxy_pass http://{}:{};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }}
-}}
-"#,
-            config.domain, config.host, config.port
-        )
+        "non_ssl_template.conf"
     };
-
+    
+    let template = load_template(template_name)?;
+    
+    // Prepare template variables
+    let port_str = config.port.to_string();
+    let variables: Vec<(&str, &str)> = vec![
+        ("DOMAIN_NAME", &config.domain),
+        ("BACKEND_HOST", &config.host),
+        ("BACKEND_PORT", &port_str),
+    ];
+    
+    // Replace variables in template
+    let nginx_config = replace_template_variables(&template, &variables);
+    
     let config_path = format!("{}/{}", NGINX_SITES_AVAILABLE, config.domain);
     let mut file = fs::File::create(&config_path)
         .map_err(|e| format!("Failed to create config file: {}", e))?;
