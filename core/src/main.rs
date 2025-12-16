@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use colored::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
@@ -7,6 +8,27 @@ use std::process::Command;
 
 mod requirements;
 use requirements::interactive_install;
+
+/// Log a message with color
+fn log_info(message: &str) {
+    println!("{}", message.normal());
+}
+
+fn log_success(message: &str) {
+    println!("{}", message.green());
+}
+
+fn log_warning(message: &str) {
+    println!("{}", message.yellow());
+}
+
+fn log_error(message: &str) {
+    eprintln!("{}", message.red());
+}
+
+fn log_step(message: &str) {
+    println!("{}", message.blue().bold());
+}
 
 // Embedded templates - included directly in the binary
 const NON_SSL_TEMPLATE: &str = include_str!("configs/non_ssl_template.conf");
@@ -128,8 +150,8 @@ fn main() {
 
     // Check if running as root
     if !is_root() {
-        eprintln!("❌ Error: XyNginC requires root privileges");
-        eprintln!("   Please run with sudo: sudo xynginc ...");
+        log_error("❌ Error: XyNginC requires root privileges");
+        log_error("   Please run with sudo: sudo xynginc ...");
         std::process::exit(1);
     }
 
@@ -155,7 +177,7 @@ fn main() {
     match result {
         Ok(_) => std::process::exit(0),
         Err(e) => {
-            eprintln!("❌ Error: {}", e);
+            log_error(&format!("❌ Error: {}", e));
             std::process::exit(1);
         }
     }
@@ -170,10 +192,10 @@ fn install_requirements() -> Result<(), String> {
 }
 
 fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), String> {
-    println!("📋 Applying configuration...");
+    log_step("📋 Applying configuration...");
 
     let config_content = if config_path == "-" {
-        println!("📥 Reading from stdin...");
+        log_info("📥 Reading from stdin...");
         std::io::read_to_string(std::io::stdin())
             .map_err(|e| format!("Failed to read stdin: {}", e))?
     } else {
@@ -183,40 +205,40 @@ fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), S
     let config: Config =
         serde_json::from_str(&config_content).map_err(|e| format!("Invalid JSON config: {}", e))?;
 
-    println!("✓ Config parsed: {} domain(s)", config.domains.len());
+    log_success(&format!("✓ Config parsed: {} domain(s)", config.domains.len()));
 
     // ÉTAPE 0: Créer un backup avant toute modification
     if !no_backup {
-        println!("\n💾 Creating backup...");
+        log_step("\n💾 Creating backup...");
         create_backup()?;
     }
 
     // ÉTAPE 1: Détecter et nettoyer les configs cassées
-    println!("\n🔍 Checking for broken configurations...");
+    log_step("\n🔍 Checking for broken configurations...");
     let broken_configs = detect_broken_configs()?;
     
     if !broken_configs.is_empty() {
-        println!("⚠️  Found {} broken configuration(s)", broken_configs.len());
+        log_warning(&format!("⚠️  Found {} broken configuration(s)", broken_configs.len()));
         for broken in &broken_configs {
-            println!("   - {}", broken);
+            log_info(&format!("   - {}", broken));
         }
         
-        println!("🧹 Cleaning broken configurations...");
+        log_step("🧹 Cleaning broken configurations...");
         for broken in &broken_configs {
             let _ = remove_config_files(broken); // Ignore errors
         }
-        println!("✓ Cleanup complete");
+        log_success("✓ Cleanup complete");
     } else {
-        println!("✓ No broken configurations found");
+        log_success("✓ No broken configurations found");
     }
 
     // ÉTAPE 2: Appliquer les nouvelles configurations
     for domain_config in &config.domains {
-        println!("\n🌐 Processing: {}", domain_config.domain);
+        log_step(&format!("\n🌐 Processing: {}", domain_config.domain));
         
         // Vérifier si une config existe déjà
         if config_exists(&domain_config.domain) {
-            println!("   ℹ️  Configuration already exists, will be overwritten");
+            log_info("   ℹ️  Configuration already exists, will be overwritten");
         }
         
         generate_nginx_config(domain_config)?;
@@ -228,17 +250,17 @@ fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), S
     }
 
     // ÉTAPE 3: Tester la configuration avant reload
-    println!("\n🧪 Testing nginx configuration...");
+    log_step("\n🧪 Testing nginx configuration...");
     match test_nginx() {
-        Ok(_) => println!("✓ Configuration is valid"),
+        Ok(_) => log_success("✓ Configuration is valid"),
         Err(e) => {
             if force {
-                println!("⚠️  Configuration test failed but --force is enabled");
-                println!("   Error: {}", e);
+                log_warning("⚠️  Configuration test failed but --force is enabled");
+                log_warning(&format!("   Error: {}", e));
             } else {
-                println!("❌ Configuration test failed!");
-                println!("   {}", e);
-                println!("\n🔄 Rolling back changes...");
+                log_error("❌ Configuration test failed!");
+                log_error(&format!("   {}", e));
+                log_step("\n🔄 Rolling back changes...");
                 
                 // Restaurer le backup
                 if !no_backup {
@@ -252,11 +274,11 @@ fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), S
 
     // ÉTAPE 4: Reload nginx si auto_reload est activé
     if config.auto_reload {
-        println!("\n🔄 Auto-reload enabled");
+        log_step("\n🔄 Auto-reload enabled");
         reload_nginx()?;
     }
 
-    println!("\n✅ Configuration applied successfully!");
+    log_success("\n✅ Configuration applied successfully!");
     Ok(())
 }
 
@@ -279,7 +301,7 @@ fn create_backup() -> Result<(), String> {
     // Copier sites-enabled (symlinks)
     copy_directory(NGINX_SITES_ENABLED, &format!("{}/sites-enabled", backup_path))?;
 
-    println!("   ✓ Backup created: {}", backup_path);
+    log_success(&format!("   ✓ Backup created: {}", backup_path));
     Ok(())
 }
 
@@ -348,7 +370,7 @@ fn restore_backup(backup_id: &str) -> Result<(), String> {
         return Err(format!("Backup not found: {}", backup_path));
     }
 
-    println!("🔄 Restoring from backup: {}", backup_path);
+    log_step(&format!("🔄 Restoring from backup: {}", backup_path));
 
     // Supprimer les configs actuelles
     for entry in fs::read_dir(NGINX_SITES_ENABLED).map_err(|e| format!("Failed to read sites-enabled: {}", e))? {
@@ -365,7 +387,7 @@ fn restore_backup(backup_id: &str) -> Result<(), String> {
     // Restaurer sites-enabled
     copy_directory(&format!("{}/sites-enabled", backup_path), NGINX_SITES_ENABLED)?;
 
-    println!("✓ Backup restored successfully");
+    log_success("✓ Backup restored successfully");
     
     Ok(())
 }
@@ -414,34 +436,34 @@ fn detect_broken_configs() -> Result<Vec<String>, String> {
 }
 
 fn clean_broken_configs(dry_run: bool) -> Result<(), String> {
-    println!("🧹 Cleaning broken configurations...\n");
+    log_step("🧹 Cleaning broken configurations...\n");
 
     let broken = detect_broken_configs()?;
 
     if broken.is_empty() {
-        println!("✓ No broken configurations found");
+        log_success("✓ No broken configurations found");
         return Ok(());
     }
 
-    println!("Found {} broken configuration(s):", broken.len());
+    log_warning(&format!("Found {} broken configuration(s):", broken.len()));
     for domain in &broken {
-        println!("   - {}", domain);
+        log_info(&format!("   - {}", domain));
     }
 
     if dry_run {
-        println!("\n⚠️  Dry run mode: no changes made");
+        log_warning("\nDry run mode: no changes made");
         return Ok(());
     }
 
-    println!("\n🗑️  Removing broken configurations...");
+    log_step("\n🗑️  Removing broken configurations...");
     for domain in &broken {
         match remove_config_files(domain) {
-            Ok(_) => println!("   ✓ Removed: {}", domain),
-            Err(e) => println!("   ⚠️  Failed to remove {}: {}", domain, e),
+            Ok(_) => log_success(&format!("   ✓ Removed: {}", domain)),
+            Err(e) => log_warning(&format!("   ⚠️  Failed to remove {}: {}", domain, e)),
         }
     }
 
-    println!("\n✅ Cleanup complete!");
+    log_success("\n✅ Cleanup complete!");
     Ok(())
 }
 
@@ -466,7 +488,7 @@ fn config_exists(domain: &str) -> bool {
 }
 
 fn check_requirements() -> Result<(), String> {
-    println!("🔍 Checking system requirements...\n");
+    log_step("🔍 Checking system requirements...\n");
 
     let mut all_ok = true;
 
@@ -475,10 +497,10 @@ fn check_requirements() -> Result<(), String> {
     match Command::new("nginx").arg("-v").output() {
         Ok(output) => {
             let version = String::from_utf8_lossy(&output.stderr);
-            println!("✓ {}", version.trim());
+            log_success(&format!("✓ {}", version.trim()));
         }
         Err(_) => {
-            println!("❌ Not installed");
+            log_error("❌ Not installed");
             all_ok = false;
         }
     }
@@ -488,10 +510,10 @@ fn check_requirements() -> Result<(), String> {
     match Command::new("certbot").arg("--version").output() {
         Ok(output) => {
             let version = String::from_utf8_lossy(&output.stdout);
-            println!("✓ {}", version.trim());
+            log_success(&format!("✓ {}", version.trim()));
         }
         Err(_) => {
-            println!("❌ Not installed");
+            log_error("❌ Not installed");
             all_ok = false;
         }
     }
@@ -499,30 +521,30 @@ fn check_requirements() -> Result<(), String> {
     // Check directories
     print!("   nginx sites-available: ");
     if Path::new(NGINX_SITES_AVAILABLE).exists() {
-        println!("✓ {}", NGINX_SITES_AVAILABLE);
+        log_success(&format!("✓ {}", NGINX_SITES_AVAILABLE));
     } else {
-        println!("❌ Not found");
+        log_error("❌ Not found");
         all_ok = false;
     }
 
     print!("   nginx sites-enabled:   ");
     if Path::new(NGINX_SITES_ENABLED).exists() {
-        println!("✓ {}", NGINX_SITES_ENABLED);
+        log_success(&format!("✓ {}", NGINX_SITES_ENABLED));
     } else {
-        println!("❌ Not found");
+        log_error("❌ Not found");
         all_ok = false;
     }
 
     // Check backup directory
     print!("   backup directory:      ");
     if Path::new(BACKUP_DIR).exists() {
-        println!("✓ {}", BACKUP_DIR);
+        log_success(&format!("✓ {}", BACKUP_DIR));
     } else {
-        println!("ℹ️  Will be created: {}", BACKUP_DIR);
+        log_info(&format!("it will be created: {}", BACKUP_DIR));
     }
 
     if all_ok {
-        println!("\n✅ All requirements met!");
+        log_success("\n✅ All requirements met!");
         Ok(())
     } else {
         Err("Some requirements are missing. Please install nginx and certbot.".to_string())
@@ -530,7 +552,7 @@ fn check_requirements() -> Result<(), String> {
 }
 
 fn list_domains() -> Result<(), String> {
-    println!("📋 Configured domains:\n");
+    log_step("Configured domains:\n");
 
     let sites = fs::read_dir(NGINX_SITES_AVAILABLE)
         .map_err(|e| format!("Failed to read sites-available: {}", e))?;
@@ -544,9 +566,9 @@ fn list_domains() -> Result<(), String> {
         if name_str != "default" {
             let enabled = Path::new(&format!("{}/{}", NGINX_SITES_ENABLED, name_str)).exists();
             let status = if enabled {
-                "✓ enabled"
+                "✓ enabled".green()
             } else {
-                "○ disabled"
+                "◯ disabled".normal()
             };
             println!("   {} - {}", name_str, status);
             count += 1;
@@ -554,7 +576,7 @@ fn list_domains() -> Result<(), String> {
     }
 
     if count == 0 {
-        println!("   (no domains configured)");
+        log_info("   (no domains configured)");
     }
 
     Ok(())
@@ -573,7 +595,7 @@ fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host: Opt
         host: host.unwrap_or("localhost").to_string(),
     };
 
-    println!("➕ Adding domain: {}", domain);
+    log_step(&format!("Adding domain: {}", domain));
     
     // Backup avant modification
     create_backup()?;
@@ -589,12 +611,12 @@ fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host: Opt
     test_nginx()?;
     reload_nginx()?;
 
-    println!("✅ Domain {} added successfully!", domain);
+    log_success(&format!("✅ Domain {} added successfully!", domain));
     Ok(())
 }
 
 fn remove_domain(domain: &str) -> Result<(), String> {
-    println!("➖ Removing domain: {}", domain);
+    log_step(&format!("Removing domain: {}", domain));
 
     // Backup avant suppression
     create_backup()?;
@@ -604,7 +626,7 @@ fn remove_domain(domain: &str) -> Result<(), String> {
     test_nginx()?;
     reload_nginx()?;
     
-    println!("✅ Domain {} removed successfully!", domain);
+    log_success(&format!("✅ Domain {} removed successfully!", domain));
     Ok(())
 }
 
@@ -629,9 +651,21 @@ fn replace_template_variables(template: &str, variables: &[(&str, &str)]) -> Str
     result
 }
 
+/// Replace HTML variables with actual values
+fn replace_html_variables(template: &str, variables: &[(&str, &str)]) -> String {
+    let mut result = template.to_string();
+    
+    for (key, value) in variables {
+        let placeholder = format!("{{{{{}}}}}", key);
+        result = result.replace(&placeholder, value);
+    }
+    
+    result
+}
+
 /// Generate nginx configuration using templates
 fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
-    println!("   🔧 Generating nginx configuration for {}", config.domain);
+    log_info(&format!("> Generating nginx configuration for {}", config.domain));
     
     // Load appropriate template based on SSL configuration
     let template_name = if config.ssl {
@@ -660,10 +694,10 @@ fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     file.write_all(nginx_config.as_bytes())
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
-    println!("   ✓ Config written to {}", config_path);
+    log_success(&format!("✓ Config written to {}", config_path));
 
     // Set up error pages and index page
-    println!("   🔧 Setting up web pages...");
+    log_info("   🔧 Setting up web pages...");
     ensure_error_page_exists()
         .map_err(|e| format!("Failed to set up error page: {}", e))?;
     ensure_index_page_exists()
@@ -671,30 +705,41 @@ fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
 
     Ok(())
 }
-
 /// Ensure the custom error page exists in the web directory
 fn ensure_error_page_exists() -> Result<(), String> {
     let error_page_dir = "/var/www/html/errors";
     let error_page_path = format!("{}/error.html", error_page_dir);
 
-    println!("   🔧 Setting up error page at {}", error_page_path);
+    log_info("   Setting up error page at error.html");
 
     // Create errors directory if it doesn't exist
     if !Path::new(error_page_dir).exists() {
-        println!("   📁 Creating error page directory: {}", error_page_dir);
+        log_info("   Creating error page directory");
         fs::create_dir_all(error_page_dir)
             .map_err(|e| format!("Failed to create error page directory {}: {}", error_page_dir, e))?;
     }
 
+    // Replace variables in the HTML template
+    let error_html = replace_html_variables(ERROR_HTML, &[
+        ("ERROR_CODE", "502"),
+        ("ERROR_MESSAGE", "Bad Gateway"),
+        ("ERROR_DESCRIPTION", "The server returned an invalid or incomplete response."),
+        ("DOMAIN_NAME", "example.com"),
+        ("RAY_ID", "1234567890abcdef"),
+        ("TIMESTAMP", "2025-12-16 08:00:00 UTC"),
+        ("REFRESH_SECONDS", "30"),
+    ]);
+
     // Write error page if it doesn't exist
     if !Path::new(&error_page_path).exists() {
-        println!("   📝 Writing error page HTML...");
-        fs::write(&error_page_path, ERROR_HTML)
+        log_info("   Writing error page HTML...");
+        fs::write(&error_page_path, error_html)
             .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
         
-        println!("   ✓ Error page created at {}", error_page_path);
+
+        log_success("   Error page created at error.html");
     } else {
-        println!("   ✓ Error page already exists at {}", error_page_path);
+        log_success("   Error page already exists at error.html");
     }
 
     Ok(())
@@ -705,25 +750,25 @@ fn ensure_index_page_exists() -> Result<(), String> {
     let index_page_path = "/var/www/html/index.html";
     let default_nginx_index = "/var/www/html/index.nginx-debian.html";
 
-    println!("   🔧 Setting up XyNginC index page");
+    log_info("   🔧 Setting up XyNginC index page");
 
     // Remove default nginx welcome page
     if Path::new(default_nginx_index).exists() {
-        println!("   🗑️  Removing default nginx welcome page");
+        log_info("Removing default nginx welcome page");
         fs::remove_file(default_nginx_index)
             .map_err(|e| format!("Failed to remove default nginx index: {}", e))?;
     }
 
     // Create XyNginC index page if it doesn't exist
     if !Path::new(index_page_path).exists() {
-        println!("   📝 Creating XyNginC index page");
+        log_info(" Creating XyNginC index page");
         let index_html = generate_index_html();
         fs::write(index_page_path, index_html)
             .map_err(|e| format!("Failed to write index page: {}", e))?;
         
-        println!("   ✓ XyNginC index page created at {}", index_page_path);
+        log_success(&format!("   ✓ XyNginC index page created at {}", index_page_path));
     } else {
-        println!("   ✓ XyNginC index page already exists at {}", index_page_path);
+        log_success(&format!("   ✓ XyNginC index page already exists at {}", index_page_path));
     }
 
     Ok(())
@@ -731,7 +776,10 @@ fn ensure_index_page_exists() -> Result<(), String> {
 
 /// Generate XyNginC index HTML
 fn generate_index_html() -> String {
-    INDEX_HTML.to_string()
+    replace_html_variables(INDEX_HTML, &[
+        ("TITLE", "XyNginC"),
+        ("DESCRIPTION", "Nginx Controller for XyPriss Applications"),
+    ])
 }
 
 fn enable_site(domain: &str) -> Result<(), String> {
@@ -747,12 +795,12 @@ fn enable_site(domain: &str) -> Result<(), String> {
     std::os::unix::fs::symlink(&available_path, &enabled_path)
         .map_err(|e| format!("Failed to create symlink: {}", e))?;
     
-    println!("   ✓ Site enabled");
+    log_success("   ✓ Site enabled");
     Ok(())
 }
  
 fn setup_ssl(config: &DomainConfig) -> Result<(), String> {
-    println!("🔒 Setting up SSL for {}...", config.domain);
+    log_step(&format!("🔒 Setting up SSL for {}...", config.domain));
 
     let email = config.email.as_ref().ok_or("Email required for SSL")?;
 
@@ -775,7 +823,7 @@ fn setup_ssl(config: &DomainConfig) -> Result<(), String> {
         return Err(format!("Certbot failed: {}", stderr));
     }
 
-    println!("   ✓ SSL certificate obtained");
+    log_success("   ✓ SSL certificate obtained");
     Ok(())
 }
 
@@ -800,7 +848,7 @@ fn reload_nginx() -> Result<(), String> {
         .map_err(|e| format!("Failed to reload nginx: {}", e))?;
 
     if output.status.success() {
-        println!("   ✓ Nginx reloaded successfully!");
+        log_success("✓ Nginx reloaded successfully!");
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -809,7 +857,7 @@ fn reload_nginx() -> Result<(), String> {
 }
 
 fn show_status() -> Result<(), String> {
-    println!("📊 XyNginC Status\n");
+    log_step(" XyNginC Status\n");
 
     // Nginx status
     print!("Nginx service: ");
@@ -819,28 +867,29 @@ fn show_status() -> Result<(), String> {
         .map_err(|e| format!("Failed to check nginx status: {}", e))?;
 
     if output.status.success() {
-        println!("✓ active");
+        log_success("✓ active");
     } else {
-        println!("○ inactive");
+        log_info("◯ inactive");
     }
 
     // Configuration test
     print!("Configuration: ");
     match test_nginx() {
-        Ok(_) => println!("✓ valid"),
-        Err(_) => println!("❌ invalid"),
+        Ok(_) => log_success("✓ valid"),
+        Err(_) => log_error("❌ invalid"),
     }
 
     // List backups
     let backups = list_backups().unwrap_or_default();
-    println!("\nBackups: {} available", backups.len());
+    log_info(&format!("\nBackups: {} available", backups.len()));
     if !backups.is_empty() {
-        println!("   Latest: {}", backups[0]);
+        log_info(&format!("   Latest: {}", backups[0]));
     }
 
     // List domains
-    println!("\nConfigured domains:");
+    log_info("\nConfigured domains:");
     list_domains()?;
 
     Ok(())
+
 }
