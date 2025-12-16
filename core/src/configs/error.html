@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Error {{ERROR_CODE}} - XyNginC</title>
+    <title>Error 502 - XyNginC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @keyframes pulse {
-        0%, 100% {
+        0%,
+        100% {
           opacity: 1;
         }
         50% {
@@ -16,7 +17,8 @@
       }
 
       @keyframes slideRight {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateX(0);
         }
         50% {
@@ -25,7 +27,8 @@
       }
 
       @keyframes slideLeft {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateX(0);
         }
         50% {
@@ -34,7 +37,8 @@
       }
 
       @keyframes bounce {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateY(0);
         }
         50% {
@@ -96,17 +100,15 @@
       <div class="mb-8">
         <h1 class="text-5xl font-light text-gray-900 mb-2">
           Error
-          <span class="font-semibold" id="error-code">{{ERROR_CODE}}</span>
+          <span class="font-semibold" id="error-code">502</span>
         </h1>
-        <p class="text-2xl text-gray-600" id="error-message">
-          {{ERROR_MESSAGE}}
-        </p>
+        <p class="text-2xl text-gray-600" id="error-message">Bad Gateway</p>
         <div class="mt-4 flex items-center text-sm text-gray-500">
-          <span id="domain">{{DOMAIN_NAME}}</span>
+          <span id="domain">example.com</span>
           <span class="mx-2">•</span>
-          <span id="ray-id">Ray ID: {{RAY_ID}}</span>
+          <span id="ray-id">Ray ID: 0000000000000000</span>
           <span class="mx-2">•</span>
-          <span id="timestamp">{{TIMESTAMP}}</span>
+          <span id="timestamp">2025-12-16 00:00:00 UTC</span>
         </div>
       </div>
 
@@ -233,7 +235,7 @@
             </div>
             <div class="text-center">
               <div class="text-sm font-medium text-gray-700" id="host-domain">
-                {{DOMAIN_NAME}}
+                example.com
               </div>
               <div class="text-xs text-gray-500">Host</div>
               <div class="text-xs font-semibold text-red-600 mt-1">Error</div>
@@ -250,7 +252,7 @@
             What happened?
           </h2>
           <p class="text-gray-600 leading-relaxed mb-4">
-            {{ERROR_DESCRIPTION}}
+            The server returned an invalid or incomplete response.
           </p>
         </div>
 
@@ -334,7 +336,7 @@
             <p class="text-sm text-blue-800">
               XyNginC will automatically retry this connection. This page will
               refresh in
-              <span id="countdown-text">{{REFRESH_SECONDS}}</span> seconds.
+              <span id="countdown-text">30</span> seconds.
             </p>
           </div>
         </div>
@@ -365,7 +367,7 @@
           </svg>
           <div class="absolute inset-0 flex items-center justify-center">
             <span class="text-xs font-bold text-blue-600" id="countdown"
-              >{{REFRESH_SECONDS}}</span
+              >30</span
             >
           </div>
         </div>
@@ -390,15 +392,64 @@
     </div>
 
     <script>
-      // Configuration from template
-      let countdown = parseInt("{{REFRESH_SECONDS}}") || 30;
-      const errorCode = "{{ERROR_CODE}}";
-      const errorMessage = "{{ERROR_MESSAGE}}";
-      const domain = "{{DOMAIN_NAME}}";
-      const rayId = "{{RAY_ID}}";
-      const timestamp = "{{TIMESTAMP}}";
+      // Error code mapping for user-friendly messages
+      const ERROR_MESSAGES = {
+        400: "Bad Request",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        500: "Internal Server Error",
+        502: "Bad Gateway",
+        503: "Service Unavailable",
+        504: "Gateway Timeout",
+      };
 
-      // Update display with server-provided values
+      const ERROR_DESCRIPTIONS = {
+        400: "The request could not be understood by the server due to malformed syntax.",
+        401: "You need to authenticate to access this resource.",
+        403: "You don't have permission to access this resource.",
+        404: "The requested resource could not be found on this server.",
+        500: "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+        502: "The server returned an invalid or incomplete response.",
+        503: "The server is temporarily unable to handle the request.",
+        504: "The server did not receive a timely response from the upstream server.",
+      };
+
+      // Get error code from URL query parameter or default to 502
+      function getErrorCode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code") || "502";
+        return code;
+      }
+
+      // Generate Ray ID (unique request identifier)
+      function generateRayId() {
+        const chars = "0123456789abcdef";
+        let rayId = "";
+        for (let i = 0; i < 16; i++) {
+          rayId += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return rayId;
+      }
+
+      // Get current timestamp in ISO format
+      function getCurrentTimestamp() {
+        return (
+          new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC"
+        );
+      }
+
+      // Configuration - all dynamically generated
+      let countdown = 30; // Auto-refresh countdown in seconds
+      const errorCode = getErrorCode();
+      const errorMessage = ERROR_MESSAGES[errorCode] || "Unknown Error";
+      const errorDescription =
+        ERROR_DESCRIPTIONS[errorCode] || "An unexpected error occurred.";
+      const domain = window.location.hostname;
+      const rayId = generateRayId();
+      const timestamp = getCurrentTimestamp();
+
+      // Update display with dynamically generated values
       function initializeDisplay() {
         document.getElementById("error-code").textContent = errorCode;
         document.getElementById("error-message").textContent = errorMessage;
@@ -409,6 +460,14 @@
         document.getElementById("countdown").textContent = countdown;
         document.getElementById("countdown-text").textContent = countdown;
         document.title = `Error ${errorCode} - XyNginC`;
+
+        // Update "What happened?" section
+        const descriptionElement = document.querySelector(
+          "p.text-gray-600.leading-relaxed.mb-4"
+        );
+        if (descriptionElement) {
+          descriptionElement.textContent = errorDescription;
+        }
       }
 
       // Countdown timer
@@ -422,7 +481,7 @@
         }
       }
 
-      // Initialize
+      // Initialize on page load
       initializeDisplay();
 
       // Start countdown
