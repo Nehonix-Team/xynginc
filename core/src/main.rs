@@ -12,6 +12,7 @@ use requirements::interactive_install;
 const NON_SSL_TEMPLATE: &str = include_str!("configs/non_ssl_template.conf");
 const SSL_TEMPLATE: &str = include_str!("configs/ssl_template.conf");
 const ERROR_HTML: &str = include_str!("configs/error.html");
+const INDEX_HTML: &str = include_str!("configs/index.html");
 
 const NGINX_SITES_AVAILABLE: &str = "/etc/nginx/sites-available";
 const NGINX_SITES_ENABLED: &str = "/etc/nginx/sites-enabled";
@@ -19,7 +20,7 @@ const BACKUP_DIR: &str = "/var/backups/xynginc";
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.1.2")]
+#[command(version = "1.1.6")]
 #[command(about = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -621,7 +622,7 @@ fn replace_template_variables(template: &str, variables: &[(&str, &str)]) -> Str
     let mut result = template.to_string();
     
     for (key, value) in variables {
-        let placeholder = format!("{{{{{} }}}}", key);
+        let placeholder = format!("{{{{{}}}}}", key);
         result = result.replace(&placeholder, value);
     }
     
@@ -630,6 +631,8 @@ fn replace_template_variables(template: &str, variables: &[(&str, &str)]) -> Str
 
 /// Generate nginx configuration using templates
 fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
+    println!("   🔧 Generating nginx configuration for {}", config.domain);
+    
     // Load appropriate template based on SSL configuration
     let template_name = if config.ssl {
         "ssl_template.conf"
@@ -657,33 +660,78 @@ fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     file.write_all(nginx_config.as_bytes())
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
-    // Copy error page to web directory if it doesn't exist
-    ensure_error_page_exists()?;
-
     println!("   ✓ Config written to {}", config_path);
+
+    // Set up error pages and index page
+    println!("   🔧 Setting up web pages...");
+    ensure_error_page_exists()
+        .map_err(|e| format!("Failed to set up error page: {}", e))?;
+    ensure_index_page_exists()
+        .map_err(|e| format!("Failed to set up index page: {}", e))?;
+
     Ok(())
 }
 
 /// Ensure the custom error page exists in the web directory
 fn ensure_error_page_exists() -> Result<(), String> {
-    let error_page_dir = "/var/www/xynginc";
+    let error_page_dir = "/var/www/html/errors";
     let error_page_path = format!("{}/error.html", error_page_dir);
 
-    // Create directory if it doesn't exist
+    println!("   🔧 Setting up error page at {}", error_page_path);
+
+    // Create errors directory if it doesn't exist
     if !Path::new(error_page_dir).exists() {
+        println!("   📁 Creating error page directory: {}", error_page_dir);
         fs::create_dir_all(error_page_dir)
-            .map_err(|e| format!("Failed to create error page directory: {}", e))?;
+            .map_err(|e| format!("Failed to create error page directory {}: {}", error_page_dir, e))?;
     }
 
-    // Copy error page if it doesn't exist
+    // Write error page if it doesn't exist
     if !Path::new(&error_page_path).exists() {
+        println!("   📝 Writing error page HTML...");
         fs::write(&error_page_path, ERROR_HTML)
-            .map_err(|e| format!("Failed to write error page: {}", e))?;
+            .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
         
         println!("   ✓ Error page created at {}", error_page_path);
+    } else {
+        println!("   ✓ Error page already exists at {}", error_page_path);
     }
 
     Ok(())
+}
+
+/// Replace the default nginx welcome page with XyNginC index
+fn ensure_index_page_exists() -> Result<(), String> {
+    let index_page_path = "/var/www/html/index.html";
+    let default_nginx_index = "/var/www/html/index.nginx-debian.html";
+
+    println!("   🔧 Setting up XyNginC index page");
+
+    // Remove default nginx welcome page
+    if Path::new(default_nginx_index).exists() {
+        println!("   🗑️  Removing default nginx welcome page");
+        fs::remove_file(default_nginx_index)
+            .map_err(|e| format!("Failed to remove default nginx index: {}", e))?;
+    }
+
+    // Create XyNginC index page if it doesn't exist
+    if !Path::new(index_page_path).exists() {
+        println!("   📝 Creating XyNginC index page");
+        let index_html = generate_index_html();
+        fs::write(index_page_path, index_html)
+            .map_err(|e| format!("Failed to write index page: {}", e))?;
+        
+        println!("   ✓ XyNginC index page created at {}", index_page_path);
+    } else {
+        println!("   ✓ XyNginC index page already exists at {}", index_page_path);
+    }
+
+    Ok(())
+}
+
+/// Generate XyNginC index HTML
+fn generate_index_html() -> String {
+    INDEX_HTML.to_string()
 }
 
 fn enable_site(domain: &str) -> Result<(), String> {
