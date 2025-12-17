@@ -23,7 +23,7 @@ pub struct SystemRequirements {
 
 /// Check which system requirements are missing
 pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
-    println!("🔍 Checking system requirements...\n");
+    println!("> Checking system requirements...\n");
 
     let mut requirements = SystemRequirements {
         nginx: false,
@@ -85,7 +85,7 @@ pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
         println!("✓ {}", backup_dir);
         requirements.backup_dir = true;
     } else {
-        println!("ℹ️  Will be created: {}", backup_dir);
+        println!("ℹ>  Will be created: {}", backup_dir);
     }
 
     Ok(requirements)
@@ -114,7 +114,7 @@ fn detect_apt_errors(error_message: &str) -> bool {
 
 /// Fix common APT repository problems
 fn fix_apt_repositories() -> Result<(), String> {
-    println!("\n🔧 Detecting APT repository issues...");
+    println!("\n> Detecting APT repository issues...");
     
     // Test apt-get update to see if there are errors
     let test_output = Command::new("apt-get")
@@ -137,7 +137,7 @@ fn fix_apt_repositories() -> Result<(), String> {
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
     let backup_dir = format!("/etc/apt/sources.list.d.backup.{}", timestamp);
     
-    println!("📋 Step 1: Backing up current sources...");
+    println!("> Step 1: Backing up current sources...");
     if Path::new("/etc/apt/sources.list.d").exists() {
         let output = Command::new("cp")
             .args(&["-r", "/etc/apt/sources.list.d", &backup_dir])
@@ -149,7 +149,7 @@ fn fix_apt_repositories() -> Result<(), String> {
         }
     }
     
-    println!("\n📋 Step 2: Disabling problematic repositories...");
+    println!("\n> Step 2: Disabling problematic repositories...");
     
     // List of problematic repository files to disable
     let problematic_repos = vec![
@@ -193,7 +193,7 @@ fn fix_apt_repositories() -> Result<(), String> {
     
     println!("   ✓ Problematic repositories disabled");
     
-    println!("\n📋 Step 3: Verifying Kali main repositories...");
+    println!("\n> Step 3: Verifying Kali main repositories...");
     
     // Ensure Kali official repos are present
     let sources_list = "/etc/apt/sources.list";
@@ -216,7 +216,7 @@ fn fix_apt_repositories() -> Result<(), String> {
     
     println!("   ✓ Kali repositories verified");
     
-    println!("\n📋 Step 4: Updating package lists...");
+    println!("\n> Step 4: Updating package lists...");
     
     let update_output = Command::new("apt-get")
         .arg("update")
@@ -232,7 +232,7 @@ fn fix_apt_repositories() -> Result<(), String> {
     }
     
     println!("\n✅ APT repositories fixed!");
-    println!("\n💡 Note: Disabled repositories are saved with .disabled extension");
+    println!("\n> Note: Disabled repositories are saved with .disabled extension");
     println!("   To re-enable: sudo mv /etc/apt/sources.list.d/repo.list.disabled /etc/apt/sources.list.d/repo.list\n");
     
     Ok(())
@@ -240,26 +240,26 @@ fn fix_apt_repositories() -> Result<(), String> {
 
 /// Install missing system requirements with interactive mode
 pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result<(), String> {
-    println!("\n📦 Installing missing requirements...\n");
+    println!("\n> Installing missing requirements...\n");
 
     let mut packages_to_install = vec![];
 
     // Check if we need to install nginx
     if !requirements.nginx {
-        println!("📋 Adding nginx installation...");
+        println!("> Adding nginx installation...");
         packages_to_install.push("nginx");
     }
 
     // Check if we need to install certbot
     if !requirements.certbot {
-        println!("📋 Adding certbot installation...");
+        println!("> Adding certbot installation...");
         packages_to_install.push("certbot");
         packages_to_install.push("python3-certbot-nginx");
     }
 
     // Create missing directories first
     if !requirements.sites_available_dir {
-        println!("📋 Creating sites-available directory...");
+        println!("> Creating sites-available directory...");
         Command::new("mkdir")
             .args(&["-p", "/etc/nginx/sites-available"])
             .status()
@@ -267,7 +267,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
     }
 
     if !requirements.sites_enabled_dir {
-        println!("📋 Creating sites-enabled directory...");
+        println!("> Creating sites-enabled directory...");
         Command::new("mkdir")
             .args(&["-p", "/etc/nginx/sites-enabled"])
             .status()
@@ -275,7 +275,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
     }
 
     if !requirements.backup_dir {
-        println!("📋 Creating backup directory...");
+        println!("> Creating backup directory...");
         fs::create_dir_all("/var/backups/xynginc")
             .map_err(|e| format!("Failed to create backup directory: {}", e))?;
     }
@@ -286,7 +286,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
         println!("   This may take a few moments and require confirmation...\n");
         
         // Update package list first
-        println!("📥 Updating package lists...");
+        println!("> Updating package lists...");
         let update_status = Command::new("apt-get")
             .arg("update")
             .stdin(Stdio::inherit())
@@ -315,7 +315,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
         }
         
         // Install packages with full interactivity
-        println!("\n📦 Installing {}...", packages_to_install.join(", "));
+        println!("\n> Installing {}...", packages_to_install.join(", "));
         let mut install_cmd = Command::new("apt-get");
         install_cmd.arg("install")
                    .arg("-y");
@@ -350,7 +350,7 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
 
 /// Configure nginx for XyNginC usage
 fn configure_nginx() -> Result<(), String> {
-    println!("\n⚙️  Configuring nginx...");
+    println!("\n>  Configuring nginx...");
 
     // Ensure nginx service is enabled and started
     let output = Command::new("systemctl")
@@ -385,7 +385,7 @@ fn configure_nginx() -> Result<(), String> {
 
         // Check if sites-enabled is already included
         if !conf_content.contains("sites-enabled") {
-            println!("   🔧 Adding sites-enabled to nginx configuration...");
+            println!("   > Adding sites-enabled to nginx configuration...");
             
             // Find the http block and add include directive
             let mut updated_content = String::new();
@@ -433,7 +433,7 @@ fn configure_nginx() -> Result<(), String> {
 
 /// Interactive installation process
 pub fn interactive_install() -> Result<(), String> {
-    println!("🚀 XyNginC Interactive Installer\n");
+    println!("> XyNginC Interactive Installer\n");
     println!("This installer will check and install all required dependencies for XyNginC.");
     println!("You may be prompted for your password to install system packages.\n");
 
@@ -454,7 +454,7 @@ pub fn interactive_install() -> Result<(), String> {
         return Ok(());
     }
 
-    println!("\n📊 Summary:");
+    println!("\n> Summary:");
     println!("   - {} requirement(s) missing", missing_count);
     let mut install_list = String::new();
     if !requirements.nginx {
@@ -505,7 +505,7 @@ pub fn interactive_install() -> Result<(), String> {
     install_missing_requirements(&requirements)?;
     
     // Final verification
-    println!("\n🔍 Final verification...");
+    println!("\n> Final verification...");
     let final_check = check_missing_requirements()?;
     
     let all_satisfied = final_check.nginx && final_check.certbot && 

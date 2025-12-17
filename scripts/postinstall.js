@@ -31,7 +31,7 @@ try {
   // Not installed, continue with installation
 }
 
-console.log("🔧 [XyNginC] Binary not found, running installation script...");
+console.log("> [XyNginC] Binary not found, running installation script...");
 console.log("");
 
 const installScript = path.join(__dirname, "../scripts/install.sh");

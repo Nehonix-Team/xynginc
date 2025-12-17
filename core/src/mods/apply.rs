@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::mods::backup::{create_backup, restore_latest_backup};
 use crate::mods::cleanup::{detect_broken_configs, remove_config_files};
-use crate::mods::config::{config_exists, generate_nginx_config};
+use crate::mods::config::{config_exists, generate_nginx_config, ensure_nginx_main_config_exists, ensure_error_pages_exist};
 use crate::mods::domain::enable_site;
 use crate::mods::logger::{log_error, log_info, log_step, log_success, log_warning};
 use crate::mods::models::Config;
@@ -50,7 +50,14 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
         log_success("✓ No broken configurations found");
     }
 
-    // ÉTAPE 2: Appliquer les nouvelles configurations
+    // ÉTAPE 2: Installer la configuration principale nginx
+    log_step("\n> Installing main nginx configuration...");
+    ensure_nginx_main_config_exists()?;
+
+    // ÉTAPE 3: Installer les pages d'erreur personnalisées
+    ensure_error_pages_exist()?;
+
+    // ÉTAPE 5: Appliquer les nouvelles configurations
     for domain_config in &config.domains {
         log_step(&format!("\n🌐 Processing: {}", domain_config.domain));
         
@@ -67,7 +74,7 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
         }
     }
 
-    // ÉTAPE 3: Tester la configuration avant reload
+    // ÉTAPE 6: Tester la configuration avant reload
     log_step("\n🧪 Testing nginx configuration...");
     match test_nginx() {
         Ok(_) => log_success("✓ Configuration is valid"),
@@ -90,7 +97,7 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
         }
     }
 
-    // ÉTAPE 4: Reload nginx si auto_reload est activé
+    // ÉTAPE 7: Reload nginx si auto_reload est activé
     if config.auto_reload {
         log_step("\n🔄 Auto-reload enabled");
         reload_nginx()?;

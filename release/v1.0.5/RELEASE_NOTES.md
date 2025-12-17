@@ -2,7 +2,7 @@
 
 This release includes several improvements and fixes to the XyNginC (XyPriss Nginx Controller).
 
-## 🔧 Changes
+## > Changes
 
 - **Package Name Update**: Standardized package name to `xynginc` for consistency.
 - **Download URL Fix**: Corrected download URLs for binary artifacts.

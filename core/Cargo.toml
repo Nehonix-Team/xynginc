@@ -1,8 +1,8 @@
 [package]
 name = "xynginc"
-version = "1.2.0"
-edition = "2021"
-authors = ["iDevo & Antigravity"]
+version = "1.3.0"
+edition = "2024"
+authors = ["Seth Eleazar/ iDevo"]
 description = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL"
 
 [dependencies]

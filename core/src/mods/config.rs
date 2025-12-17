@@ -75,7 +75,7 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     log_success(&format!("✓ Config written to {}", config_path));
 
     // Set up error pages, index page, and default config
-    log_info("   🔧 Setting up web pages and default config...");
+    log_info("   > Setting up web pages and default config...");
     ensure_error_page_exists()
         .map_err(|e| format!("Failed to set up error page: {}", e))?;
     ensure_index_page_exists()
@@ -83,6 +83,24 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     ensure_default_config_exists()
         .map_err(|e| format!("Failed to set up default config: {}", e))?;
 
+    Ok(())
+}
+
+/// Install or update the main nginx configuration
+/// This replaces /etc/nginx/nginx.conf with our optimized configuration
+pub fn ensure_nginx_main_config_exists() -> Result<(), String> {
+    use crate::mods::constants::NGINX_MAIN_CONFIG;
+    
+    let nginx_conf_path = "/etc/nginx/nginx.conf";
+    
+    log_info("> Installing main nginx configuration...");
+    
+    // Always overwrite the main config to ensure it's up to date
+    fs::write(nginx_conf_path, NGINX_MAIN_CONFIG)
+        .map_err(|e| format!("Failed to write main nginx config: {}", e))?;
+    
+    log_success(&format!("✓ Main nginx config installed at {}", nginx_conf_path));
+    
     Ok(())
 }
 
@@ -120,7 +138,7 @@ pub fn ensure_index_page_exists() -> Result<(), String> {
     let index_page_path = "/var/www/html/index.html";
     let default_nginx_index = "/var/www/html/index.nginx-debian.html";
 
-    log_info("   🔧 Setting up XyNginC index page");
+    log_info("   > Setting up XyNginC index page");
 
     // Remove default nginx welcome page
     if Path::new(default_nginx_index).exists() {
@@ -165,13 +183,50 @@ pub fn ensure_default_config_exists() -> Result<(), String> {
     
     let default_config_path = format!("{}/default", NGINX_SITES_AVAILABLE);
     
-    log_info("   🔧 Installing default nginx configuration...");
+    log_info("> Installing default nginx configuration...");
     
     // Always overwrite the default config to ensure it's up to date
     fs::write(&default_config_path, DEFAULT_CONFIG)
         .map_err(|e| format!("Failed to write default config: {}", e))?;
     
     log_success(&format!("   ✓ Default nginx config installed at {}", default_config_path));
+
+    Ok(())
+}
+
+/// Ensure error pages exist in the web directory
+pub fn ensure_error_pages_exist() -> Result<(), String> {
+    use crate::mods::constants::{ERROR_400_HTML, ERROR_401_HTML, ERROR_403_HTML, ERROR_404_HTML, ERROR_50X_HTML};
+    
+    let error_page_dir = "/var/www/html/errors";
+    
+    log_info("> Setting up custom error pages...");
+    
+    // Create errors directory if it doesn't exist
+    if !Path::new(error_page_dir).exists() {
+        log_info("   Creating error pages directory");
+        fs::create_dir_all(error_page_dir)
+            .map_err(|e| format!("Failed to create error pages directory {}: {}", error_page_dir, e))?;
+    }
+    
+    // Write error pages
+    let error_pages = vec![
+        ("400.html", ERROR_400_HTML),
+        ("401.html", ERROR_401_HTML),
+        ("403.html", ERROR_403_HTML),
+        ("404.html", ERROR_404_HTML),
+        ("50x.html", ERROR_50X_HTML),
+    ];
+    
+    for (filename, content) in error_pages {
+        let error_page_path = format!("{}/{}", error_page_dir, filename);
+        
+        log_info(&format!("   Writing error page: {}", filename));
+        fs::write(&error_page_path, content)
+            .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
+    }
+    
+    // log_success("✓ Custom error pages installed");
     
     Ok(())
 }

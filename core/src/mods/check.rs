@@ -5,7 +5,7 @@ use crate::mods::constants::{BACKUP_DIR, NGINX_SITES_AVAILABLE, NGINX_SITES_ENAB
 use crate::mods::logger::{log_error, log_info, log_step, log_success};
 
 pub fn check_requirements() -> Result<(), String> {
-    log_step("🔍 Checking system requirements...\n");
+    log_step("> Checking system requirements...\n");
 
     let mut all_ok = true;
 

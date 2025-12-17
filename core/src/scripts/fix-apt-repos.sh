@@ -3,7 +3,7 @@
 # Script pour nettoyer les dépôts APT problématiques sur Kali Linux
 # Ce script résout les erreurs de dépôts et permet d'installer nginx
 
-echo "🔧 Nettoyage des dépôts APT problématiques..."
+echo "> Nettoyage des dépôts APT problématiques..."
 echo ""
 
 # Couleurs pour les messages

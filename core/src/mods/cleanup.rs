@@ -68,7 +68,7 @@ pub fn clean_broken_configs(dry_run: bool) -> Result<(), String> {
         return Ok(());
     }
 
-    log_step("\n🗑️  Removing broken configurations...");
+    log_step("\n>  Removing broken configurations...");
     for domain in &broken {
         match remove_config_files(domain) {
             Ok(_) => log_success(&format!("   ✓ Removed: {}", domain)),

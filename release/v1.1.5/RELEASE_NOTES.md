@@ -180,13 +180,13 @@ $ sudo xynginc apply --config domains.json
 ```bash
 $ sudo xynginc apply --config domains.json
 🌐 Processing: server.nehonix.xyz
-   🔧 Generating nginx configuration for server.nehonix.xyz
+   > Generating nginx configuration for server.nehonix.xyz
    ✓ Config written to /etc/nginx/sites-available/server.nehonix.xyz
-   🔧 Setting up web pages...
+   > Setting up web pages...
    📁 Creating error page directory: /var/www/html/errors
    📝 Writing error page HTML...
    ✓ Error page created at /var/www/html/errors/error.html
-   🔧 Setting up XyNginC index page
+   > Setting up XyNginC index page
    🗑️  Removing default nginx welcome page
    📝 Creating XyNginC index page
    ✓ XyNginC index page created at /var/www/html/index.html

@@ -85,7 +85,7 @@ prompt_install() {
     fi
 }
 
-echo -e "${BLUE}🔍 Checking system requirements...${NC}"
+echo -e "${BLUE}> Checking system requirements...${NC}"
 echo ""
 
 # Check and install Nginx
