@@ -21,32 +21,9 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 
 ## Installation
 
-### GitHub (Recommended for npm issues)
+For detailed installation instructions, please refer to the [Installation Guide](docs/INSTALLATION.md).
 
-```bash
-curl -L -o xynginc https://github.com/Nehonix-Team/xynginc/releases/latest/download/xynginc && chmod +x xynginc && sudo mv xynginc /usr/local/bin/ && xynginc --version
-```
-
-### npm (Automatic binary download)
-
-```bash
-npm install xynginc
-```
-
-The necessary binary for your architecture (Linux x64/arm64) will be downloaded automatically during installation.
-
-### Prerequisites
-
-- **Operating System**: Linux (Ubuntu/Debian recommended)
-- **Node.js**: Version 20.x.y or higher
-- **Nginx**: Must be installed (`sudo apt install nginx`)
-- **Certbot**: Must be installed (`sudo apt install certbot python3-certbot-nginx`)
-
-Verify the installation and prerequisites:
-
-```bash
-sudo npx xynginc check
-```
+XyNginC is designed for production environments running on Linux. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
 
 ## Quick Start
 
