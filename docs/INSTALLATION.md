@@ -7,17 +7,17 @@ XyNginC (XNCP) is strictly designed for **production environments** running on *
 **Recommended Environment:**
 
 - **Platform**: Virtual Private Server (VPS) or Dedicated Server
-- **OS**: Ubuntu 20.04 LTS or newer (Debian 11+ is also supported)
-- **Architecture**: x64 or arm64
+- **OS**: Ubuntu 20.04 LTS or newer (Debian 11+, Kali Linux supported)
+- **Architecture**: x86_64 (Standard 64-bit Linux)
 - **Access**: Root or sudo privileges required
 
-**Warning**: Attempting to run XNCP on Windows or macOS is not supported and will fail. These operating systems lack the necessary kernel features and service management structures required for XNCP's core functionality.
+**Warning**: XNCP provides a pre-compiled binary for standard **Linux x86_64** systems only. Other architectures (like ARM/Raspberry Pi) are not officially supported via the pre-compiled binary and would require manual compilation from source. Windows and macOS are not supported.
 
 ## Installation Methods
 
 ### Option 1: NPM Installation (Recommended for Node.js Projects)
 
-If you are integrating XNCP into a Node.js application (e.g., with XyPriss), installing via npm is the most streamlined approach. The post-install script will automatically detect your architecture and download the appropriate binary.
+If you are integrating XNCP into a Node.js application (e.g., with XyPriss), installing via npm is the most streamlined approach. The post-install script will automatically download the binary.
 
 ```bash
 npm install xynginc
