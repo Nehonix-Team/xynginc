@@ -10,4 +10,5 @@ pub mod domain;
 pub mod logger;
 pub mod models;
 pub mod nginx;
+pub mod nginx_modules;
 pub mod ssl;

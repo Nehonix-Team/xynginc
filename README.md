@@ -7,7 +7,7 @@
 
 ## Overview
 
-XyNginC (XyPriss Nginx Controller) streamlines the deployment of XyPriss applications by automating Nginx reverse proxy configuration and SSL certificate management. It eliminates the need for manual Nginx configuration editing and simplifies the production setup process into a few lines of TypeScript.
+XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, SSL certificate management, and provides optimized, production-ready configs for security, performance, and best practices. It eliminates manual Nginx editing, simplifying XyPriss deployment to just a few lines of TypeScript. Check out the [demo project on GitHub](https://github.com/iDevo-ll/XYNC-Demo).
 
 ## Key Features
 
@@ -21,7 +21,13 @@ XyNginC (XyPriss Nginx Controller) streamlines the deployment of XyPriss applica
 
 ## Installation
 
-Install the package via npm:
+### GitHub (Recommended for npm issues)
+
+```bash
+curl -L -o xynginc https://github.com/Nehonix-Team/xynginc/releases/latest/download/xynginc && chmod +x xynginc && sudo mv xynginc /usr/local/bin/ && xynginc --version
+```
+
+### npm (Automatic binary download)
 
 ```bash
 npm install xynginc
@@ -32,7 +38,7 @@ The necessary binary for your architecture (Linux x64/arm64) will be downloaded 
 ### Prerequisites
 
 - **Operating System**: Linux (Ubuntu/Debian recommended)
-- **Node.js**: Version 18.0.0 or higher
+- **Node.js**: Version 20.x.y or higher
 - **Nginx**: Must be installed (`sudo apt install nginx`)
 - **Certbot**: Must be installed (`sudo apt install certbot python3-certbot-nginx`)
 

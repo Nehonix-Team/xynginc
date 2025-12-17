@@ -11,6 +11,8 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::io::Write;
 
+use crate::mods::nginx_modules;
+
 /// System requirements that XyNginC needs to function
 #[derive(Debug, Clone)]
 pub struct SystemRequirements {
@@ -19,6 +21,7 @@ pub struct SystemRequirements {
     pub sites_available_dir: bool,
     pub sites_enabled_dir: bool,
     pub backup_dir: bool,
+    pub headers_more_module: bool,
 }
 
 /// Check which system requirements are missing
@@ -31,6 +34,7 @@ pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
         sites_available_dir: false,
         sites_enabled_dir: false,
         backup_dir: false,
+        headers_more_module: false,
     };
 
     // Check nginx
@@ -86,6 +90,21 @@ pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
         requirements.backup_dir = true;
     } else {
         println!("ℹ>  Will be created: {}", backup_dir);
+    }
+
+    // Check headers-more module
+    print!("   headers-more module:   ");
+    match nginx_modules::check_headers_more_module() {
+        Ok(true) => {
+            println!("✓ Installed and configured");
+            requirements.headers_more_module = true;
+        }
+        Ok(false) => {
+            println!("❌ Not installed");
+        }
+        Err(e) => {
+            println!("⚠️  Check failed: {}", e);
+        }
     }
 
     Ok(requirements)
@@ -344,6 +363,11 @@ pub fn install_missing_requirements(requirements: &SystemRequirements) -> Result
         configure_nginx()?;
     }
 
+    // Install headers-more module if needed
+    if !requirements.headers_more_module {
+        nginx_modules::install_headers_more_module()?;
+    }
+
     println!("\n✅ All requirements installed and configured successfully!");
     Ok(())
 }
@@ -447,6 +471,7 @@ pub fn interactive_install() -> Result<(), String> {
         !requirements.sites_available_dir,
         !requirements.sites_enabled_dir,
         !requirements.backup_dir,
+        !requirements.headers_more_module,
     ].iter().filter(|&&x| x).count();
 
     if missing_count == 0 {
@@ -467,7 +492,10 @@ pub fn interactive_install() -> Result<(), String> {
         install_list.push_str("nginx directories ");
     }
     if !requirements.backup_dir {
-        install_list.push_str("backup directory");
+        install_list.push_str("backup directory ");
+    }
+    if !requirements.headers_more_module {
+        install_list.push_str("headers-more module");
     }
     
     println!("   - Will install: {}", install_list.trim());
@@ -509,7 +537,8 @@ pub fn interactive_install() -> Result<(), String> {
     let final_check = check_missing_requirements()?;
     
     let all_satisfied = final_check.nginx && final_check.certbot && 
-                       final_check.sites_available_dir && final_check.sites_enabled_dir;
+                       final_check.sites_available_dir && final_check.sites_enabled_dir &&
+                       final_check.headers_more_module;
     
     if all_satisfied {
         println!("\n🎉 Installation completed successfully!");

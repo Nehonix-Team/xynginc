@@ -6,7 +6,7 @@ use crate::mods::config::{config_exists, generate_nginx_config, ensure_nginx_mai
 use crate::mods::domain::enable_site;
 use crate::mods::logger::{log_error, log_info, log_step, log_success, log_warning};
 use crate::mods::models::Config;
-use crate::mods::nginx::{reload_nginx, test_nginx};
+use crate::mods::nginx::{reload_nginx, test_nginx_with_autofix};
 use crate::mods::ssl::setup_ssl;
 
 pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(), String> {
@@ -74,9 +74,9 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
         }
     }
 
-    // ÉTAPE 6: Tester la configuration avant reload
-    log_step("\n🧪 Testing nginx configuration...");
-    match test_nginx() {
+    // ÉTAPE 6: Tester la configuration avant reload (avec auto-fix)
+    log_step("\n> Testing nginx configuration...");
+    match test_nginx_with_autofix() {
         Ok(_) => log_success("✓ Configuration is valid"),
         Err(e) => {
             if force {
