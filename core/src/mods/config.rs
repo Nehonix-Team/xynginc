@@ -72,7 +72,7 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     file.write_all(nginx_config.as_bytes())
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
-    log_success(&format!("✓ Config written to {}", config_path));
+    log_success(&format!("✓ Config written to $/{domain}", domain = config.domain));
 
     // Set up error pages, index page, and default config
     log_info("   > Setting up web pages and default config...");
@@ -156,7 +156,7 @@ pub fn ensure_index_page_exists() -> Result<(), String> {
         
         log_success(&format!("   ✓ XyNginC index page created at {}", index_page_path));
     } else {
-        log_success(&format!("   ✓ XyNginC index page already exists at {}", index_page_path));
+        log_success(&format!("   ✓ XyNginC index page already exists."));
     }
 
     Ok(())
@@ -200,11 +200,11 @@ pub fn ensure_error_pages_exist() -> Result<(), String> {
     
     let error_page_dir = "/var/www/html/errors";
     
-    log_info("> Setting up custom error pages...");
+    log_info("> Setting up pages...");
     
     // Create errors directory if it doesn't exist
     if !Path::new(error_page_dir).exists() {
-        log_info("   Creating error pages directory");
+        log_info("   Creating pages directory");
         fs::create_dir_all(error_page_dir)
             .map_err(|e| format!("Failed to create error pages directory {}: {}", error_page_dir, e))?;
     }

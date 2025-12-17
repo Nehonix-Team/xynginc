@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.4.0")]
+#[command(version = "1.4.1")]
 #[command(about = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]

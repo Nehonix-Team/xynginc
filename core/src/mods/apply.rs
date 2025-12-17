@@ -66,11 +66,32 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
             log_info("> Configuration already exists, will be overwritten");
         }
         
-        generate_nginx_config(domain_config)?;
-        enable_site(&domain_config.domain)?;
-
+        // Si SSL est demandé, générer d'abord une config HTTP temporaire
         if domain_config.ssl {
+            log_info("> SSL requested - generating temporary HTTP configuration first");
+            
+            // Créer une config temporaire sans SSL
+            let mut temp_config = domain_config.clone();
+            temp_config.ssl = false;
+            
+            generate_nginx_config(&temp_config)?;
+            enable_site(&temp_config.domain)?;
+            
+            // Recharger nginx pour que certbot puisse l'utiliser
+            log_info("> Reloading nginx for certbot validation...");
+            reload_nginx()?;
+            
+            // Obtenir le certificat SSL
             setup_ssl(domain_config)?;
+            
+            // Maintenant générer la vraie config avec SSL
+            log_info("> Generating final HTTPS configuration...");
+            generate_nginx_config(domain_config)?;
+            enable_site(&domain_config.domain)?;
+        } else {
+            // Pas de SSL, générer directement la config HTTP
+            generate_nginx_config(domain_config)?;
+            enable_site(&domain_config.domain)?;
         }
     }
 

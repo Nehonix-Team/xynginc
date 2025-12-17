@@ -55,8 +55,26 @@ pub fn check_missing_requirements() -> Result<SystemRequirements, String> {
     match Command::new("certbot").arg("--version").output() {
         Ok(output) => {
             let version = String::from_utf8_lossy(&output.stdout);
-            println!("✓ {}", version.trim());
-            requirements.certbot = true;
+            
+            // Check if nginx plugin is available
+            let plugins_output = Command::new("certbot")
+                .args(&["plugins", "--text"])
+                .output();
+            
+            let has_nginx_plugin = if let Ok(plugins) = plugins_output {
+                let plugins_text = String::from_utf8_lossy(&plugins.stdout);
+                plugins_text.contains("nginx") || plugins_text.contains("* nginx")
+            } else {
+                false
+            };
+            
+            if has_nginx_plugin {
+                println!("✓ {} (with nginx plugin)", version.trim());
+                requirements.certbot = true;
+            } else {
+                println!("⚠️  {} (nginx plugin missing)", version.trim());
+                requirements.certbot = false; // Force reinstall to get plugin
+            }
         }
         Err(_) => {
             println!("❌ Not installed");
