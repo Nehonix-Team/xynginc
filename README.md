@@ -22,6 +22,7 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 ## Installation
 
 For detailed installation instructions, please refer to the [Installation Guide](docs/INSTALLATION.md).
+For building from source (custom architectures), see the [Build Guide](docs/BUILD_FROM_SOURCE.md).
 
 XyNginC is designed for production environments running on Linux. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
 

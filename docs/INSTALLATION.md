@@ -11,7 +11,7 @@ XyNginC (XNCP) is strictly designed for **production environments** running on *
 - **Architecture**: x86_64 (Standard 64-bit Linux)
 - **Access**: Root or sudo privileges required
 
-**Warning**: XNCP provides a pre-compiled binary for standard **Linux x86_64** systems only. Other architectures (like ARM/Raspberry Pi) are not officially supported via the pre-compiled binary and would require manual compilation from source. Windows and macOS are not supported.
+**Warning**: XNCP provides a pre-compiled binary for standard **Linux x86_64** systems only. Other architectures (like ARM/Raspberry Pi) are not officially supported via the pre-compiled binary and would require manual compilation from source. See the [Build from Source Guide](BUILD_FROM_SOURCE.md). Windows and macOS are not supported.
 
 ## Installation Methods
 
