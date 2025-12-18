@@ -14,6 +14,7 @@ libc = "0.2"
 chrono = "0.4"
 atty = "0.2"
 colored = "2.1"
+sha2 = "0.10"
 
 [profile.release]
 opt-level = 3       # Optimisation maximale

@@ -55,7 +55,7 @@ pub fn apply_config(config_path: &str, no_backup: bool, force: bool) -> Result<(
     ensure_nginx_main_config_exists()?;
 
     // ÉTAPE 3: Installer les pages d'erreur personnalisées
-    ensure_error_pages_exist()?;
+    ensure_error_pages_exist(None)?;
 
     // ÉTAPE 5: Appliquer les nouvelles configurations
     for domain_config in &config.domains {

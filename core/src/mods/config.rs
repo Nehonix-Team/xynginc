@@ -56,11 +56,13 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
     
     // Prepare template variables
     let port_str = config.port.to_string();
+    let domain_hash = crate::mods::utils::get_domain_hash(&config.domain);
     let variables: Vec<(&str, &str)> = vec![
         ("DOMAIN_NAME", &config.domain),
         ("BACKEND_HOST", &config.host),
         ("BACKEND_PORT", &port_str),
         ("MAX_BODY_SIZE", &config.max_body_size),
+        ("DOMAIN_HASH", &domain_hash),
     ];
     
     // Replace variables in template
@@ -77,8 +79,8 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
 
     // Set up error pages, index page, and default config
     log_info("   > Setting up web pages and default config...");
-    ensure_error_page_exists()
-        .map_err(|e| format!("Failed to set up error page: {}", e))?;
+    ensure_error_pages_exist(Some(&config.domain))
+        .map_err(|e| format!("Failed to set up error pages: {}", e))?;
     ensure_index_page_exists()
         .map_err(|e| format!("Failed to set up index page: {}", e))?;
     ensure_default_config_exists()
@@ -106,34 +108,6 @@ pub fn ensure_nginx_main_config_exists() -> Result<(), String> {
 }
 
 /// Ensure the custom error page exists in the web directory
-pub fn ensure_error_page_exists() -> Result<(), String> {
-    let error_page_dir = "/var/www/html/errors";
-    let error_page_path = format!("{}/error.html", error_page_dir);
-
-    log_info("   Setting up error page at error.html");
-
-    // Create errors directory if it doesn't exist
-    if !Path::new(error_page_dir).exists() {
-        log_info("   Creating error page directory");
-        fs::create_dir_all(error_page_dir)
-            .map_err(|e| format!("Failed to create error page directory {}: {}", error_page_dir, e))?;
-    }
-
-    // Write error page if it doesn't exist (no variable replacement needed - handled by nginx and JS)
-    if !Path::new(&error_page_path).exists() {
-        log_info("   Writing error page HTML...");
-        fs::write(&error_page_path, ERROR_HTML)
-            .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
-        
-
-        log_success("   Error page created at error.html");
-    } else {
-        log_success("   Error page already exists at error.html");
-    }
-
-    Ok(())
-}
-
 /// Replace the default nginx welcome page with XyNginC index
 pub fn ensure_index_page_exists() -> Result<(), String> {
     let index_page_path = "/var/www/html/index.html";
@@ -196,8 +170,10 @@ pub fn ensure_default_config_exists() -> Result<(), String> {
 }
 
 /// Ensure error pages exist in the web directory
-pub fn ensure_error_pages_exist() -> Result<(), String> {
-    use crate::mods::constants::{ERROR_301_HTML, ERROR_400_HTML, ERROR_401_HTML, ERROR_403_HTML, ERROR_404_HTML, ERROR_50X_HTML};
+/// If domain is provided, files are named using domain hash
+pub fn ensure_error_pages_exist(domain: Option<&str>) -> Result<(), String> {
+    use crate::mods::constants::{ERROR_301_HTML, ERROR_400_HTML, ERROR_401_HTML, ERROR_403_HTML, ERROR_404_HTML, ERROR_50X_HTML, ERROR_HTML};
+    use crate::mods::utils::get_domain_hash;
     
     let error_page_dir = "/var/www/html/errors";
     
@@ -210,25 +186,33 @@ pub fn ensure_error_pages_exist() -> Result<(), String> {
             .map_err(|e| format!("Failed to create error pages directory {}: {}", error_page_dir, e))?;
     }
     
+    let suffix = if let Some(d) = domain {
+        format!("{}.", get_domain_hash(d))
+    } else {
+        "".to_string()
+    };
+
     // Write error pages
     let error_pages = vec![
-        ("301.html", ERROR_301_HTML),
-        ("400.html", ERROR_400_HTML),
-        ("401.html", ERROR_401_HTML),
-        ("403.html", ERROR_403_HTML),
-        ("404.html", ERROR_404_HTML),
-        ("50x.html", ERROR_50X_HTML),
+        (format!("{}301.html", suffix), ERROR_301_HTML),
+        (format!("{}400.html", suffix), ERROR_400_HTML),
+        (format!("{}401.html", suffix), ERROR_401_HTML),
+        (format!("{}403.html", suffix), ERROR_403_HTML),
+        (format!("{}404.html", suffix), ERROR_404_HTML),
+        (format!("{}50x.html", suffix), ERROR_50X_HTML),
+        (format!("{}error.html", suffix), ERROR_HTML),
     ];
     
     for (filename, content) in error_pages {
         let error_page_path = format!("{}/{}", error_page_dir, filename);
         
-        log_info(&format!("   Writing error page: {}", filename));
-        fs::write(&error_page_path, content)
-            .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
+        // Only write if it doesn't exist to avoid unnecessary I/O
+        if !Path::new(&error_page_path).exists() {
+            log_info(&format!("   Writing error page: {}", filename));
+            fs::write(&error_page_path, content)
+                .map_err(|e| format!("Failed to write error page {}: {}", error_page_path, e))?;
+        }
     }
-    
-    // log_success("✓ Custom error pages installed");
     
     Ok(())
 }
