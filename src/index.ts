@@ -58,9 +58,6 @@ export default function XNCP(options: XyNginCPluginOptions) {
       // Validate config
       validateConfig({ domains, autoReload });
     },
-    onResponse(req, res) {
-      res.setHeader("Server", "NEHONIX");
-    },
 
     onServerStart: async (server) => {
       Logger.info("[XyNginC] Initializing Nginx Controller...");
