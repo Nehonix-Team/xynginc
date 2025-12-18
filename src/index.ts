@@ -1,3 +1,9 @@
+/*
+ * This code contains proprietary source code from NEHONIX
+ * Copyright © 2025 NEHONIX - www.nehonix.com
+ * Licensed under NEHONIX Open Source License (NOSL) v1.0
+ */
+
 import { Plugin } from "xypriss";
 import { exec, spawn } from "child_process";
 import { promisify } from "util";
@@ -6,38 +12,25 @@ import fs from "fs";
 import os from "os";
 import https from "https";
 import { Logger } from "./logger";
+import {
+  XyNginCConfig,
+  XyNginCDomainConfig,
+  XyNginCPluginOptions,
+} from "./types";
 
 const execAsync = promisify(exec);
-
-export interface XyNginCDomainConfig {
-  domain: string;
-  port: number;
-  ssl?: boolean;
-  email?: string;
-  host?: string;
-  maxBodySize?: string;
-}
-
-export interface XyNginCConfig {
-  domains: XyNginCDomainConfig[];
-  autoReload?: boolean;
-}
-
-interface XyNginCPluginOptions extends XyNginCConfig {
-  /** Path to the xynginc binary (auto-detected if not provided) */
-  binaryPath?: string;
-  /** Auto-download binary if not found (default: true) */
-  autoDownload?: boolean;
-  /** GitHub release version to download (default: "latest") */
-  version?: string;
-  /** Automatically install system requirements if missing (default: true) */
-  installRequirements?: boolean;
-}
 
 const BINARY_NAME = "xynginc";
 const GITHUB_REPO = "Nehonix-Team/xynginc";
 const BINARY_DIR = path.join(__dirname, "../bin");
 
+/**
+ * XyNginC Plugin for XyPriss.
+ * Automates Nginx and SSL management for your server.
+ *
+ * @param options - Plugin configuration options.
+ * @returns A XyPriss Plugin instance.
+ */
 export default function XNCP(options: XyNginCPluginOptions) {
   const {
     domains,
@@ -125,7 +118,10 @@ export default function XNCP(options: XyNginCPluginOptions) {
 }
 
 /**
- * Validate the plugin configuration
+ * Validates the plugin configuration.
+ *
+ * @param config - The configuration to validate.
+ * @throws Error if the configuration is invalid.
  */
 function validateConfig(config: XyNginCConfig): void {
   if (!config.domains || config.domains.length === 0) {
@@ -171,7 +167,14 @@ function validateConfig(config: XyNginCConfig): void {
 }
 
 /**
- * Ensure the binary exists (locate or download)
+ * Ensures the xynginc binary exists.
+ * It checks the custom path, the system PATH, and the local bin directory.
+ * If not found and autoDownload is enabled, it downloads the binary.
+ *
+ * @param customPath - Optional custom path to the binary.
+ * @param autoDownload - Whether to download the binary if missing.
+ * @param version - The version to download.
+ * @returns The absolute path to the binary.
  */
 async function ensureBinary(
   customPath: string | undefined,
@@ -212,7 +215,10 @@ async function ensureBinary(
 }
 
 /**
- * Download the binary from GitHub releases
+ * Downloads the xynginc binary from GitHub releases.
+ *
+ * @param version - The version to download (e.g., "latest" or "v1.4.5").
+ * @returns The path to the downloaded binary.
  */
 async function downloadBinary(version: string): Promise<string> {
   const platform = os.platform();
@@ -275,7 +281,10 @@ async function downloadBinary(version: string): Promise<string> {
 }
 
 /**
- * Check system requirements using the binary
+ * Checks if system requirements (Nginx, Certbot) are satisfied using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @returns True if requirements are met, false otherwise.
  */
 async function checkRequirements(binaryPath: string): Promise<boolean> {
   try {
@@ -290,8 +299,9 @@ async function checkRequirements(binaryPath: string): Promise<boolean> {
 }
 
 /**
- * Install system requirements using the binary with interactive mode
- * This spawns the process with inherited stdio to allow user interaction
+ * Installs system requirements using the binary in interactive mode.
+ *
+ * @param binaryPath - Path to the xynginc binary.
  */
 async function installRequirementsHandler(binaryPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -322,7 +332,10 @@ async function installRequirementsHandler(binaryPath: string): Promise<void> {
 }
 
 /**
- * Apply configuration using the binary
+ * Applies the configuration using the xynginc binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @param config - The configuration object.
  */
 async function applyConfig(
   binaryPath: string,
@@ -369,7 +382,14 @@ async function applyConfig(
 }
 
 /**
- * Add a domain using the binary
+ * Adds a new domain configuration using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @param domain - The domain name.
+ * @param port - The backend port.
+ * @param ssl - Whether to enable SSL.
+ * @param email - Optional email for SSL.
+ * @param maxBodySize - Optional maximum body size.
  */
 async function addDomain(
   binaryPath: string,
@@ -394,7 +414,10 @@ async function addDomain(
 }
 
 /**
- * Remove a domain using the binary
+ * Removes a domain configuration using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @param domain - The domain name to remove.
  */
 async function removeDomain(binaryPath: string, domain: string): Promise<void> {
   try {
@@ -406,7 +429,10 @@ async function removeDomain(binaryPath: string, domain: string): Promise<void> {
 }
 
 /**
- * List all configured domains
+ * Lists all configured domains.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @returns A list of domain names.
  */
 async function listDomains(binaryPath: string): Promise<string[]> {
   try {
@@ -420,7 +446,9 @@ async function listDomains(binaryPath: string): Promise<string[]> {
 }
 
 /**
- * Reload Nginx
+ * Reloads the Nginx service using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
  */
 async function reloadNginx(binaryPath: string): Promise<void> {
   try {
@@ -432,7 +460,10 @@ async function reloadNginx(binaryPath: string): Promise<void> {
 }
 
 /**
- * Test Nginx configuration
+ * Tests the Nginx configuration validity using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @returns True if the configuration is valid.
  */
 async function testNginx(binaryPath: string): Promise<boolean> {
   try {
@@ -444,7 +475,10 @@ async function testNginx(binaryPath: string): Promise<boolean> {
 }
 
 /**
- * Get status
+ * Gets the status of managed sites using the binary.
+ *
+ * @param binaryPath - Path to the xynginc binary.
+ * @returns The status output.
  */
 async function getStatus(binaryPath: string): Promise<string> {
   try {
@@ -456,7 +490,7 @@ async function getStatus(binaryPath: string): Promise<string> {
 }
 
 // Re-export types
-export type { XyNginCPluginOptions };
+export type { XyNginCConfig, XyNginCDomainConfig, XyNginCPluginOptions };
 
 // Named exports for direct usage
 export const XyNginC = XNCP;

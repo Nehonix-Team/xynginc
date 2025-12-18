@@ -92,7 +92,7 @@ XNCP({
 Manage domains programmatically at runtime:
 
 ```typescript
-app.on("ready", async () => {
+app.start(undefined, async () => {
   // Add a new domain
   await app.xynginc.addDomain(
     "new.example.com",
@@ -105,10 +105,10 @@ app.on("ready", async () => {
   const domains = await app.xynginc.listDomains();
   console.log("Configured domains:", domains);
 
-  // Validate Nginx configuration
+  // Validate XCNP configuration
   const isValid = await app.xynginc.test();
 
-  // Reload Nginx service
+  // Reload XyNginC service
   await app.xynginc.reload();
 
   // Remove a domain
@@ -163,10 +163,10 @@ await server.xynginc.removeDomain(domain: string): Promise<void>
 // List all configured domains
 await server.xynginc.listDomains(): Promise<string[]>
 
-// Reload Nginx service
+// Reload XyNginC service
 await server.xynginc.reload(): Promise<void>
 
-// Test Nginx configuration validity
+// Test XyNginC configuration validity
 await server.xynginc.test(): Promise<boolean>
 
 // Get status of managed sites
