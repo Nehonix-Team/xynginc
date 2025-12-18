@@ -2,7 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-use crate::mods::constants::{ERROR_HTML, INDEX_HTML, NON_SSL_TEMPLATE, SSL_TEMPLATE};
+use crate::mods::constants::{INDEX_HTML, NON_SSL_TEMPLATE, SSL_TEMPLATE};
 use crate::mods::logger::{log_info, log_success};
 use crate::mods::models::DomainConfig;
 
