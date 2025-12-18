@@ -1,6 +1,6 @@
 [package]
 name = "xynginc"
-version = "1.4.4"
+version = "1.4.5"
 edition = "2024"
 authors = ["Seth Eleazar/ iDevo"]
 description = "XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL"

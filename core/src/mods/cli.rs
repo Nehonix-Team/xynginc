@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "xynginc")]
-#[command(version = "1.4.4")]
+#[command(version = "1.4.5")]
 #[command(about = "XyPriss Nginx Controller - Simplified Nginx and SSL management", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -52,6 +52,10 @@ pub enum Commands {
         /// Email for Let's Encrypt (required if ssl=true)
         #[arg(short, long)]
         email: Option<String>,
+
+        /// Maximum client body size (e.g., 20M, 100M, 1G)
+        #[arg(long, default_value = "20M")]
+        max_body_size: String,
     },
 
     /// Remove a domain configuration

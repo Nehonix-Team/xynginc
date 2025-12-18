@@ -60,6 +60,7 @@ pub fn generate_nginx_config(config: &DomainConfig) -> Result<(), String> {
         ("DOMAIN_NAME", &config.domain),
         ("BACKEND_HOST", &config.host),
         ("BACKEND_PORT", &port_str),
+        ("MAX_BODY_SIZE", &config.max_body_size),
     ];
     
     // Replace variables in template

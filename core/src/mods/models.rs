@@ -16,6 +16,12 @@ pub struct DomainConfig {
     pub email: Option<String>,
     #[serde(default = "default_host")]
     pub host: String,
+    #[serde(default = "default_max_body_size")]
+    pub max_body_size: String,
+}
+
+fn default_max_body_size() -> String {
+    "20M".to_string()
 }
 
 fn default_host() -> String {

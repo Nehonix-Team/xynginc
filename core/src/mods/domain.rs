@@ -42,7 +42,7 @@ pub fn list_domains() -> Result<(), String> {
     Ok(())
 }
 
-pub fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host: Option<&str>) -> Result<(), String> {
+pub fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host: Option<&str>, max_body_size: Option<&str>) -> Result<(), String> {
     if ssl && email.is_none() {
         return Err("Email is required when SSL is enabled".to_string());
     }
@@ -53,6 +53,7 @@ pub fn add_domain(domain: &str, port: u16, ssl: bool, email: Option<&str>, host:
         ssl,
         email: email.map(|s| s.to_string()),
         host: host.unwrap_or("localhost").to_string(),
+        max_body_size: max_body_size.unwrap_or("20M").to_string(),
     };
 
     log_step(&format!("Adding domain: {}", domain));
