@@ -196,7 +196,7 @@ pub fn ensure_default_config_exists() -> Result<(), String> {
 
 /// Ensure error pages exist in the web directory
 pub fn ensure_error_pages_exist() -> Result<(), String> {
-    use crate::mods::constants::{ERROR_400_HTML, ERROR_401_HTML, ERROR_403_HTML, ERROR_404_HTML, ERROR_50X_HTML};
+    use crate::mods::constants::{ERROR_301_HTML, ERROR_400_HTML, ERROR_401_HTML, ERROR_403_HTML, ERROR_404_HTML, ERROR_50X_HTML};
     
     let error_page_dir = "/var/www/html/errors";
     
@@ -211,6 +211,7 @@ pub fn ensure_error_pages_exist() -> Result<(), String> {
     
     // Write error pages
     let error_pages = vec![
+        ("301.html", ERROR_301_HTML),
         ("400.html", ERROR_400_HTML),
         ("401.html", ERROR_401_HTML),
         ("403.html", ERROR_403_HTML),
