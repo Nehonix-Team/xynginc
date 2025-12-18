@@ -1,0 +1,131 @@
+# NEHONIX OPEN SOURCE LICENSE (NOSL)
+Version 1.0 - December 2025
+Copyright © 2025 NEHONIX. All Rights Reserved.
+
+This License governs the use, modification, and distribution of software provided by NEHONIX under its open source projects. NEHONIX is committed to fostering collaborative innovation while strictly protecting its intellectual property rights. Violation of any term of this License will result in immediate termination of all granted rights and may subject the violator to legal action.
+
+## 1. Definitions
+"Software" means the source code, documentation, and all associated files provided under this License.
+"Licensee" means any natural or legal person using the Software.
+"Modification" means any alteration, enhancement, or adaptation of the Software.
+"Distribution" means any form of sharing, publication, or making available of the Software.
+"Principal Project" means the official repository maintained by NEHONIX.
+"Commercial Use" means use of the Software in a commercial, marketing, or promotional context.
+
+## 2. Grant of Rights
+Subject to strict compliance with all conditions of this License, NEHONIX grants the Licensee the following rights:
+
+### 2.1 Use
+- Use of the Software for personal, educational, or commercial purposes.
+- Execution of the Software on any compatible system.
+
+### 2.2 Modification
+- Modification of the Software to adapt it to specific needs.
+- Creation of derivative works based on the Software.
+
+### 2.3 Distribution
+- Distribution of the original or modified Software to third parties.
+- Integration of the Software into other projects, subject to conditions.
+
+## 3. Mandatory Obligations of Licensee
+
+### 3.1 Attribution and Proprietary Notice
+For every source file utilizing NEHONIX code, the Licensee MUST include the following comment at the top of the file:
+
+```
+/* * This code contains proprietary source code from NEHONIX * Copyright © 2025 NEHONIX - www.nehonix.com * Licensed under NEHONIX Open Source License (NOSL) v1.0 */
+```
+
+For languages without multi-line comments, adapt to the appropriate format (# for Python, // for certain languages, etc.).
+
+### 3.2 Documentation of Ownership
+The Licensee MUST:
+- Include the original LICENSE file in any distribution.
+- Reference NEHONIX in the README file or main documentation with the following text:
+  "This project uses code developed by NEHONIX (www.nehonix.com) under the NEHONIX Open Source License (NOSL) v1.0."
+- Preserve all copyright and license notices present in the Software.
+
+### 3.3 Contribution to Principal Project
+Prior to using the code in another project, the Licensee MUST:
+- Submit a Pull Request to the Principal Project for any significant modification or improvement.
+- Allow reasonable time (30 days) for review by the NEHONIX team.
+- This obligation does not apply to minor bug fixes or internal adaptations not distributed publicly.
+
+### 3.4 Commercial and Marketing Use
+For any commercial or marketing use of the Software, the Licensee MUST:
+- Clearly display "Powered by NEHONIX" in:
+  - Marketing materials (website, brochures, advertisements)
+  - Product documentation
+  - Commercial presentations
+- Include the NEHONIX logo where visually appropriate (logo available upon request).
+- Not suggest partnership or endorsement by NEHONIX without written authorization.
+
+### 3.5 License Preservation
+Any distribution of the Software, modified or not, MUST:
+- Be conducted under this same License (NOSL v1.0).
+- Include a complete copy of this License.
+- Not impose additional restrictions on the rights granted herein.
+
+## 4. Restrictions
+
+### 4.1 Prohibitions
+The Licensee SHALL NOT:
+- Remove, modify, or obscure NEHONIX copyright and proprietary notices.
+- Present the Software as their own work.
+- Use the name, trademarks, or logos of NEHONIX without written authorization, except for required attribution.
+- Modify the text of this License in distributed copies.
+
+### 4.2 Prohibited Use
+The Software SHALL NOT be used for:
+- Illegal or malicious activities.
+- Creation of weapons, mass surveillance systems, or harmful technologies.
+- Violation of third-party intellectual property rights.
+
+## 5. Intellectual Property
+
+### 5.1 Reserved Rights
+NEHONIX retains all intellectual property rights in the original Software. This License grants only a right to use and does not constitute a transfer of ownership.
+
+### 5.2 Contributions
+Contributions to the Principal Project may be submitted by any Licensee. By submitting a contribution, the Licensee grants NEHONIX a perpetual, worldwide, non-exclusive, royalty-free license to use, modify, and distribute such contribution.
+
+## 6. Warranties and Liabilities
+
+### 6.1 Disclaimer of Warranty
+The software is provided "as is", without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.
+
+### 6.2 Limitation of Liability
+In no event shall NEHONIX be liable for any direct, indirect, incidental, special, exemplary, or consequential damages arising from the use or inability to use the software, even if advised of the possibility of such damages.
+
+### 6.3 Indemnification
+The Licensee agrees to indemnify and hold harmless NEHONIX from any liability arising from violation of this License.
+
+## 7. Termination
+
+### 7.1 Automatic Termination
+Violation of any term of this License results in immediate termination of all granted rights. Upon termination, the Licensee MUST:
+- Cease all use of the Software.
+- Destroy all copies in their possession.
+- Remove all public distributions.
+
+### 7.2 Survival of Obligations
+Obligations concerning attribution, intellectual property, and confidentiality survive termination.
+
+## 8. General Provisions
+
+### 8.1 Governing Law
+This License is governed by the laws of Côte d'Ivoire. Any dispute shall be submitted to the competent courts of Yamoussoukro.
+
+### 8.2 Severability
+If any provision of this License is held invalid, the remaining provisions shall remain in full force and effect.
+
+### 8.3 License Modification
+NEHONIX reserves the right to publish revised versions of this License. Existing projects may continue under the original version or adopt the new version.
+
+### 8.4 Language
+The English version shall govern. Translations are provided for informational purposes only.
+
+## 9. Contact and Permissions
+NEHONIX Legal Department
+Email: opensource@nehonix.com
+Website: www.nehonix.com

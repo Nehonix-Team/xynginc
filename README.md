@@ -1,9 +1,11 @@
-# XyNginC - XyPriss Nginx Controller
+# XyNginC
 
-> Production-grade Nginx and SSL management for XyPriss applications.
+This project uses code developed by NEHONIX (www.nehonix.com) under the NEHONIX Open Source License (NOSL) v1.0.
+
+XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL.
 
 [![npm version](https://badge.fury.io/js/%40xypriss%2Fxynginc.svg)](https://www.npmjs.com/package/xynginc)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
 
 ## Overview
 

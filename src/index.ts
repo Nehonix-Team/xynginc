@@ -15,6 +15,7 @@ export interface XyNginCDomainConfig {
   ssl?: boolean;
   email?: string;
   host?: string;
+  maxBodySize?: string;
 }
 
 export interface XyNginCConfig {
@@ -99,8 +100,9 @@ export default function XNCP(options: XyNginCPluginOptions) {
             domain: string,
             port: number,
             ssl = false,
-            email?: string
-          ) => addDomain(binary, domain, port, ssl, email),
+            email?: string,
+            maxBodySize?: string
+          ) => addDomain(binary, domain, port, ssl, email, maxBodySize),
           removeDomain: (domain: string) => removeDomain(binary, domain),
           listDomains: () => listDomains(binary),
           reload: () => reloadNginx(binary),
@@ -159,6 +161,11 @@ function validateConfig(config: XyNginCConfig): void {
     // Set default host to localhost if not provided
     if (!domain.host) {
       domain.host = "localhost";
+    }
+
+    // Set default maxBodySize if not provided
+    if (!domain.maxBodySize) {
+      domain.maxBodySize = "20M";
     }
   }
 }
@@ -321,7 +328,20 @@ async function applyConfig(
   binaryPath: string,
   config: { domains: XyNginCDomainConfig[]; auto_reload: boolean }
 ): Promise<void> {
-  const configJson = JSON.stringify(config);
+  // Map camelCase to snake_case for Rust core
+  const mappedConfig = {
+    auto_reload: config.auto_reload,
+    domains: config.domains.map((d) => ({
+      domain: d.domain,
+      port: d.port,
+      ssl: d.ssl,
+      email: d.email,
+      host: d.host,
+      max_body_size: d.maxBodySize,
+    })),
+  };
+
+  const configJson = JSON.stringify(mappedConfig);
 
   try {
     // Test nginx BEFORE applying new config
@@ -356,14 +376,16 @@ async function addDomain(
   domain: string,
   port: number,
   ssl: boolean,
-  email?: string
+  email?: string,
+  maxBodySize?: string
 ): Promise<void> {
   const sslFlag = ssl ? "--ssl" : "";
   const emailFlag = email ? `--email ${email}` : "";
+  const maxBodySizeFlag = maxBodySize ? `--max-body-size ${maxBodySize}` : "";
 
   try {
     const { stdout } = await execAsync(
-      `sudo ${binaryPath} add --domain ${domain} --port ${port} ${sslFlag} ${emailFlag}`
+      `sudo ${binaryPath} add --domain ${domain} --port ${port} ${sslFlag} ${emailFlag} ${maxBodySizeFlag}`
     );
     Logger.info(stdout.trim());
   } catch (error: any) {
