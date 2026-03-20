@@ -73,3 +73,5 @@ Cargo.lock
 .env
 config/secrets/
 RELEASE_NOTES.md
+
+*bin/
