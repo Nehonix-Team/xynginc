@@ -1,16 +1,16 @@
 {
   "name": "xynginc",
-  "version": "1.0.11",
+  "version": "1.0.15",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "xynginc": "./bin/xynginc"
+    "xynginc": "./scripts/cli.js"
   },
   "scripts": {
-    "build": "tsc && npm run build:rust",
-    "build:rust": "cd core && cargo build --release && cp target/release/xynginc ../bin/",
-    "build:all": "npm run build:rust && npm run build",
+    "build": "tsc && npm run build:go",
+    "build:go": "bash scripts/build-cross.sh",
+    "build:all": "npm run build:go && npm run build",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -33,12 +33,8 @@
   },
   "files": [
     "dist",
-    "bin",
     "scripts",
     "README.md"
-  ],
-  "os": [
-    "linux"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -51,6 +47,6 @@
     "url": "https://github.com/Nehonix-Team/xynginc.git/issues"
   },
   "dependencies": {
-    "xypriss": "^4.3.6"
+    "xypriss": "^5.0.1"
   }
 }

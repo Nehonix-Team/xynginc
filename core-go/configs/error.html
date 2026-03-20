@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Error 502 - XyNginC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      @keyframes slideRight {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+      }
+
+      @keyframes slideLeft {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        50% {
+          transform: translateX(-5px);
+        }
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      .arrow-right {
+        animation: slideRight 2s ease-in-out infinite;
+      }
+
+      .arrow-left {
+        animation: slideLeft 2s ease-in-out infinite;
+      }
+
+      .pulse-icon {
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .bounce-icon {
+        animation: bounce 2s ease-in-out infinite;
+      }
+
+      @keyframes countdown {
+        from {
+          stroke-dashoffset: 0;
+        }
+        to {
+          stroke-dashoffset: 283;
+        }
+      }
+
+      .countdown-circle {
+        animation: countdown 30s linear infinite;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 0;
+        transform-origin: center;
+        transform: rotate(-90deg);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 py-4 px-6">
+      <div class="max-w-7xl mx-auto flex items-center">
+        <div class="flex items-center space-x-2">
+          <div
+            class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center"
+          >
+            <span class="text-white font-bold text-sm">XN</span>
+          </div>
+          <span class="text-xl font-semibold text-gray-900">XNCP</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-6 py-12">
+      <!-- Error Title -->
+      <div class="mb-8">
+        <h1 class="text-5xl font-light text-gray-900 mb-2">
+          Error
+          <span class="font-semibold" id="error-code">502</span>
+        </h1>
+        <p class="text-2xl text-gray-600" id="error-message">Bad Gateway</p>
+        <div class="mt-4 flex items-center text-sm text-gray-500">
+          <span id="domain">example.com</span>
+          <span class="mx-2">•</span>
+          <span id="ray-id">Ray ID: 0000000000000000</span>
+          <span class="mx-2">•</span>
+          <span id="timestamp">2025-12-16 00:00:00 UTC</span>
+        </div>
+      </div>
+
+      <!-- Connection Diagram -->
+      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <div class="grid grid-cols-7 gap-4 items-center">
+          <!-- Browser -->
+          <div class="col-span-2 flex flex-col items-center">
+            <div
+              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 bounce-icon relative"
+            >
+              <svg
+                class="w-12 h-12 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                ></path>
+              </svg>
+              <div
+                class="absolute -bottom-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"
+              ></div>
+            </div>
+            <div class="text-center">
+              <div class="text-sm font-medium text-gray-700">You</div>
+              <div class="text-xs text-gray-500">Browser</div>
+              <div class="text-xs font-semibold text-green-600 mt-1">
+                Working
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow Right 1 -->
+          <div class="flex justify-center arrow-right">
+            <svg
+              class="w-8 h-8 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              ></path>
+            </svg>
+          </div>
+
+          <!-- XyNginC / XNCP -->
+          <div class="col-span-1 flex flex-col items-center">
+            <div
+              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 pulse-icon relative"
+            >
+              <svg
+                class="w-12 h-12 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
+                ></path>
+              </svg>
+              <div
+                class="absolute -bottom-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"
+              ></div>
+            </div>
+            <div class="text-center">
+              <div class="text-sm font-medium text-gray-700">NEHONIX</div>
+              <div class="text-xs text-gray-500">XNCP</div>
+              <div class="text-xs font-semibold text-green-600 mt-1">
+                Working
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow Right 2 -->
+          <div class="flex justify-center arrow-left">
+            <svg
+              class="w-8 h-8 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              ></path>
+            </svg>
+          </div>
+
+          <!-- Host/Server -->
+          <div class="col-span-2 flex flex-col items-center">
+            <div
+              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 bounce-icon relative"
+            >
+              <svg
+                class="w-12 h-12 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+                ></path>
+              </svg>
+              <div
+                class="absolute -bottom-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
+              ></div>
+            </div>
+            <div class="text-center">
+              <div class="text-sm font-medium text-gray-700" id="host-domain">
+                example.com
+              </div>
+              <div class="text-xs text-gray-500">Host</div>
+              <div class="text-xs font-semibold text-red-600 mt-1">Error</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Column Layout -->
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- What happened? -->
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900 mb-4">
+            What happened?
+          </h2>
+          <p class="text-gray-600 leading-relaxed mb-4">
+            The server returned an invalid or incomplete response.
+          </p>
+        </div>
+
+        <!-- What can I do? -->
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900 mb-4">
+            What can I do?
+          </h2>
+
+          <div class="mb-6">
+            <h3 class="font-semibold text-gray-900 mb-2">
+              If you are a visitor of this website:
+            </h3>
+            <p class="text-gray-600">Please try again in a few minutes.</p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-gray-900 mb-2">
+              If you are the owner of this website:
+            </h3>
+            <div
+              class="max-w-md mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
+            >
+              <div class="flex items-start space-x-3 mb-4">
+                <svg
+                  class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  ></path>
+                </svg>
+                <div>
+                  <p class="text-sm text-gray-600 leading-relaxed">
+                    A connection issue is preventing communication between
+                    XyNginC and your XyPriss server.
+                  </p>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                Please review the XyPriss server logs for detailed error
+                information and verify network connectivity, firewall rules, and
+                service status.
+              </p>
+              <div class="flex space-x-3">
+                <button
+                  onclick="location.reload()"
+                  class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+                >
+                  Refresh Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Resources -->
+      <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div class="flex items-start">
+          <svg
+            class="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+          <div>
+            <h3 class="font-semibold text-blue-900 mb-1">
+              Additional troubleshooting resources
+            </h3>
+            <p class="text-sm text-blue-800">
+              XyNginC will automatically retry this connection. This page will
+              refresh in
+              <span id="countdown-text">30</span> seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-refresh indicator -->
+      <div class="mt-6 flex items-center justify-center space-x-3">
+        <div class="relative w-10 h-10">
+          <svg class="w-10 h-10 transform -rotate-90" viewBox="0 0 40 40">
+            <circle
+              cx="20"
+              cy="20"
+              r="18"
+              stroke="#e5e7eb"
+              stroke-width="4"
+              fill="none"
+              class="opacity-25"
+            />
+            <circle
+              cx="20"
+              cy="20"
+              r="18"
+              stroke="#3b82f6"
+              stroke-width="4"
+              fill="none"
+              class="countdown-circle"
+            />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-xs font-bold text-blue-600" id="countdown"
+              >30</span
+            >
+          </div>
+        </div>
+        <p class="text-sm text-gray-500">Auto-refreshing...</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="border-t border-gray-200 mt-12 py-6">
+      <div class="max-w-5xl mx-auto px-6">
+        <div
+          class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500"
+        >
+          <div class="mb-4 md:mb-0">
+            <span class="font-semibold text-gray-700">XyNginC</span> by NEHONIX
+          </div>
+          <div class="text-center md:text-right">
+            Performance & security by XyPriss Network Content Platform
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Error code mapping for user-friendly messages
+      const ERROR_MESSAGES = {
+        301: "Moved Permanently",
+        400: "Bad Request",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        500: "Internal Server Error",
+        502: "Bad Gateway",
+        503: "Service Unavailable",
+        504: "Gateway Timeout",
+      };
+
+      const ERROR_DESCRIPTIONS = {
+        301: "The requested resource has been moved to a new location.",
+        400: "The request could not be understood by the server due to malformed syntax.",
+        401: "You need to authenticate to access this resource.",
+        403: "You don't have permission to access this resource.",
+        404: "The requested resource could not be found on this server.",
+        500: "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+        502: "The server returned an invalid or incomplete response.",
+        503: "The server is temporarily unable to handle the request.",
+        504: "The server did not receive a timely response from the upstream server.",
+      };
+
+      // Get error code from URL query parameter or default to 502
+      function getErrorCode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code") || "502";
+        return code;
+      }
+
+      // Generate Ray ID (unique request identifier)
+      function generateRayId() {
+        const chars = "0123456789abcdef";
+        let rayId = "";
+        for (let i = 0; i < 16; i++) {
+          rayId += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return rayId;
+      }
+
+      // Get current timestamp in ISO format
+      function getCurrentTimestamp() {
+        return (
+          new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC"
+        );
+      }
+
+      // Configuration - all dynamically generated
+      let countdown = 30; // Auto-refresh countdown in seconds
+      const errorCode = getErrorCode();
+      const errorMessage = ERROR_MESSAGES[errorCode] || "Unknown Error";
+      const errorDescription =
+        ERROR_DESCRIPTIONS[errorCode] || "An unexpected error occurred.";
+      const domain = window.location.hostname;
+      const rayId = generateRayId();
+      const timestamp = getCurrentTimestamp();
+
+      // Update display with dynamically generated values
+      function initializeDisplay() {
+        document.getElementById("error-code").textContent = errorCode;
+        document.getElementById("error-message").textContent = errorMessage;
+        document.getElementById("domain").textContent = domain;
+        document.getElementById("host-domain").textContent = domain;
+        document.getElementById("ray-id").textContent = "Ray ID: " + rayId;
+        document.getElementById("timestamp").textContent = timestamp;
+        document.getElementById("countdown").textContent = countdown;
+        document.getElementById("countdown-text").textContent = countdown;
+        document.title = `Error ${errorCode} - XyNginC`;
+
+        // Update "What happened?" section
+        const descriptionElement = document.querySelector(
+          "p.text-gray-600.leading-relaxed.mb-4"
+        );
+        if (descriptionElement) {
+          descriptionElement.textContent = errorDescription;
+        }
+      }
+
+      // Countdown timer
+      function updateCountdown() {
+        countdown--;
+        document.getElementById("countdown").textContent = countdown;
+        document.getElementById("countdown-text").textContent = countdown;
+
+        if (countdown <= 0) {
+          window.location.reload();
+        }
+      }
+
+      // Initialize on page load
+      initializeDisplay();
+
+      // Start countdown
+      const countdownInterval = setInterval(updateCountdown, 1000);
+
+      // Clear interval if user manually refreshes
+      window.addEventListener("beforeunload", () => {
+        clearInterval(countdownInterval);
+      });
+    </script>
+  </body>
+</html>

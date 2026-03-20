@@ -20,9 +20,16 @@ import {
 
 const execAsync = promisify(exec);
 
-const BINARY_NAME = "xynginc";
+const BINARY_BASE_NAME = "xynginc";
 const GITHUB_REPO = "Nehonix-Team/xynginc";
 const BINARY_DIR = path.join(__dirname, "../bin");
+
+function getBinaryName(): string {
+  const platform = os.platform();
+  const arch = os.arch();
+  const ext = platform === "win32" ? ".exe" : "";
+  return `${BINARY_BASE_NAME}-${platform}-${arch}${ext}`;
+}
 
 /**
  * XyNginC Plugin for XyPriss.
@@ -39,7 +46,16 @@ export default function XNCP(options: XyNginCPluginOptions) {
     autoDownload = true,
     version = "latest",
     installRequirements = true,
+    sudoPassword,
   } = options;
+
+  const getSudo = () => {
+    const pwd = sudoPassword || process.env.SUDO_PASSWORD;
+    if (pwd) {
+      return `echo '${pwd}' | sudo -S`;
+    }
+    return "sudo";
+  };
 
   return Plugin.create({
     name: "xynginc",
@@ -65,25 +81,29 @@ export default function XNCP(options: XyNginCPluginOptions) {
         Logger.info("[XyNginC] Checking system requirements...");
 
         // Check if requirements are satisfied
-        const requirementsOk = await checkRequirements(binary);
+        const requirementsOk = await checkRequirements(binary, getSudo());
 
         // Install requirements if enabled and needed
         if (!requirementsOk && installRequirements) {
           Logger.info(
-            "[XyNginC] Requirements missing, installing automatically..."
+            "[XyNginC] Requirements missing, installing automatically...",
           );
-          await installRequirementsHandler(binary);
+          await installRequirementsHandler(binary, getSudo());
           Logger.info("[XyNginC] Requirements installed, re-checking...");
-          await checkRequirements(binary);
+          await checkRequirements(binary, getSudo());
         } else if (!requirementsOk) {
           throw new Error(
-            "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install"
+            "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",
           );
         }
 
         // 3. Apply configuration
         Logger.info("[XyNginC] Applying configuration...");
-        await applyConfig(binary, { domains, auto_reload: autoReload });
+        await applyConfig(
+          binary,
+          { domains, auto_reload: autoReload },
+          getSudo(),
+        );
 
         Logger.success("[XyNginC] Configuration applied successfully!");
 
@@ -94,14 +114,17 @@ export default function XNCP(options: XyNginCPluginOptions) {
             port: number,
             ssl = false,
             email?: string,
-            maxBodySize?: string
-          ) => addDomain(binary, domain, port, ssl, email, maxBodySize),
-          removeDomain: (domain: string) => removeDomain(binary, domain),
-          listDomains: () => listDomains(binary),
-          reload: () => reloadNginx(binary),
-          test: () => testNginx(binary),
-          status: () => getStatus(binary),
-          installRequirements: () => installRequirementsHandler(binary),
+            maxBodySize?: string,
+          ) =>
+            addDomain(binary, domain, port, ssl, email, maxBodySize, getSudo()),
+          removeDomain: (domain: string) =>
+            removeDomain(binary, domain, getSudo()),
+          listDomains: () => listDomains(binary, getSudo()),
+          reload: () => reloadNginx(binary, getSudo()),
+          test: () => testNginx(binary, getSudo()),
+          status: () => getStatus(binary, getSudo()),
+          installRequirements: () =>
+            installRequirementsHandler(binary, getSudo()),
         };
 
         Logger.info("[XyNginC] Server methods available: server.xynginc.*");
@@ -126,14 +149,14 @@ export default function XNCP(options: XyNginCPluginOptions) {
 function validateConfig(config: XyNginCConfig): void {
   if (!config.domains || config.domains.length === 0) {
     throw new Error(
-      "[XyNginC] Configuration error: 'domains' array cannot be empty"
+      "[XyNginC] Configuration error: 'domains' array cannot be empty",
     );
   }
 
   for (const domain of config.domains) {
     if (!domain.domain || typeof domain.domain !== "string") {
       throw new Error(
-        "[XyNginC] Configuration error: 'domain' must be a non-empty string"
+        "[XyNginC] Configuration error: 'domain' must be a non-empty string",
       );
     }
 
@@ -144,13 +167,13 @@ function validateConfig(config: XyNginCConfig): void {
       domain.port > 65535
     ) {
       throw new Error(
-        `[XyNginC] Configuration error: 'port' must be between 1-65535 for ${domain.domain}`
+        `[XyNginC] Configuration error: 'port' must be between 1-65535 for ${domain.domain}`,
       );
     }
 
     if (domain.ssl && !domain.email) {
       throw new Error(
-        `[XyNginC] Configuration error: 'email' is required when SSL is enabled for ${domain.domain}`
+        `[XyNginC] Configuration error: 'email' is required when SSL is enabled for ${domain.domain}`,
       );
     }
 
@@ -179,7 +202,7 @@ function validateConfig(config: XyNginCConfig): void {
 async function ensureBinary(
   customPath: string | undefined,
   autoDownload: boolean,
-  version: string
+  version: string,
 ): Promise<string> {
   // 1. Try custom path
   if (customPath && fs.existsSync(customPath)) {
@@ -198,9 +221,15 @@ async function ensureBinary(
   }
 
   // 3. Try local bin directory
-  const localPath = path.join(BINARY_DIR, BINARY_NAME);
+  const localPath = path.join(BINARY_DIR, getBinaryName());
   if (fs.existsSync(localPath)) {
     return localPath;
+  }
+
+  // Also try default un-suffixed binary if someone manually placed it
+  const defaultLocalPath = path.join(BINARY_DIR, "xynginc");
+  if (fs.existsSync(defaultLocalPath)) {
+    return defaultLocalPath;
   }
 
   // 4. Auto-download if enabled
@@ -210,7 +239,7 @@ async function ensureBinary(
   }
 
   throw new Error(
-    "[XyNginC] Binary not found. Install xynginc or set 'autoDownload: true'"
+    "[XyNginC] Binary not found. Install xynginc or set 'autoDownload: true'",
   );
 }
 
@@ -222,15 +251,14 @@ async function ensureBinary(
  */
 async function downloadBinary(version: string): Promise<string> {
   const platform = os.platform();
-  const arch = os.arch();
 
-  if (platform !== "linux") {
-    throw new Error(
-      `[XyNginC] Unsupported platform: ${platform}. Only Linux is supported.`
+  if (platform !== "linux" && platform !== "win32" && platform !== "darwin") {
+    Logger.warn(
+      `[XyNginC] Unusual platform detected: ${platform}. Attempting to download anyway.`,
     );
   }
 
-  const binaryName = `${BINARY_NAME}-${platform}-${arch}`;
+  const binaryName = getBinaryName();
   const downloadUrl =
     version === "latest"
       ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
@@ -243,7 +271,7 @@ async function downloadBinary(version: string): Promise<string> {
     fs.mkdirSync(BINARY_DIR, { recursive: true });
   }
 
-  const localPath = path.join(BINARY_DIR, BINARY_NAME);
+  const localPath = path.join(BINARY_DIR, binaryName);
 
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(localPath);
@@ -284,11 +312,17 @@ async function downloadBinary(version: string): Promise<string> {
  * Checks if system requirements (Nginx, Certbot) are satisfied using the binary.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  * @returns True if requirements are met, false otherwise.
  */
-async function checkRequirements(binaryPath: string): Promise<boolean> {
+async function checkRequirements(
+  binaryPath: string,
+  sudoCmd: string,
+): Promise<boolean> {
   try {
-    const { stdout, stderr } = await execAsync(`sudo ${binaryPath} check`);
+    const { stdout, stderr } = await execAsync(
+      `${sudoCmd} ${binaryPath} check`,
+    );
     Logger.info(stdout.trim());
     if (stderr) Logger.error(stderr.trim());
     return true;
@@ -302,14 +336,23 @@ async function checkRequirements(binaryPath: string): Promise<boolean> {
  * Installs system requirements using the binary in interactive mode.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  */
-async function installRequirementsHandler(binaryPath: string): Promise<void> {
+async function installRequirementsHandler(
+  binaryPath: string,
+  sudoCmd: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     Logger.info("[XyNginC] Launching interactive installer...");
     Logger.info("[XyNginC] Please respond to any prompts in the terminal.");
 
+    // Handle process environmental logic if running via non-interactive sudo -S
+    const cmd = sudoCmd.includes("-S")
+      ? `${sudoCmd} ${binaryPath} install`
+      : `sudo ${binaryPath} install`;
+
     // Spawn the process with inherited stdio for full interactivity
-    const installProcess = spawn("sudo", [binaryPath, "install"], {
+    const installProcess = spawn(cmd, {
       stdio: "inherit", // This allows the subprocess to use the parent's stdin/stdout/stderr
       shell: true,
     });
@@ -317,7 +360,7 @@ async function installRequirementsHandler(binaryPath: string): Promise<void> {
     installProcess.on("close", (code) => {
       if (code === 0) {
         Logger.success(
-          "[XyNginC] ✓ System requirements installed successfully"
+          "[XyNginC] ✓ System requirements installed successfully",
         );
         resolve();
       } else {
@@ -336,10 +379,12 @@ async function installRequirementsHandler(binaryPath: string): Promise<void> {
  *
  * @param binaryPath - Path to the xynginc binary.
  * @param config - The configuration object.
+ * @param sudoCmd - Sudo prefix to use.
  */
 async function applyConfig(
   binaryPath: string,
-  config: { domains: XyNginCDomainConfig[]; auto_reload: boolean }
+  config: { domains: XyNginCDomainConfig[]; auto_reload: boolean },
+  sudoCmd: string,
 ): Promise<void> {
   // Map camelCase to snake_case for Rust core
   const mappedConfig = {
@@ -359,16 +404,16 @@ async function applyConfig(
   try {
     // Test nginx BEFORE applying new config
     Logger.info("[XyNginC] Testing current nginx config...");
-    const testResult = await testNginx(binaryPath);
+    const testResult = await testNginx(binaryPath, sudoCmd);
     if (!testResult) {
       Logger.warn(
-        "[XyNginC] ⚠️  Current nginx config has errors. Attempting to fix..."
+        "[XyNginC] ⚠️  Current nginx config has errors. Attempting to fix...",
       );
     }
 
     // Pass config via stdin to avoid shell escaping issues
     const { stdout, stderr } = await execAsync(
-      `echo '${configJson}' | sudo ${binaryPath} apply --config -`
+      `echo '${configJson}' | ${sudoCmd} ${binaryPath} apply --config -`,
     );
     Logger.info(stdout.trim());
     if (stderr) Logger.error(stderr.trim());
@@ -390,6 +435,7 @@ async function applyConfig(
  * @param ssl - Whether to enable SSL.
  * @param email - Optional email for SSL.
  * @param maxBodySize - Optional maximum body size.
+ * @param sudoCmd - Sudo prefix to use.
  */
 async function addDomain(
   binaryPath: string,
@@ -397,7 +443,8 @@ async function addDomain(
   port: number,
   ssl: boolean,
   email?: string,
-  maxBodySize?: string
+  maxBodySize?: string,
+  sudoCmd: string = "sudo",
 ): Promise<void> {
   const sslFlag = ssl ? "--ssl" : "";
   const emailFlag = email ? `--email ${email}` : "";
@@ -405,7 +452,7 @@ async function addDomain(
 
   try {
     const { stdout } = await execAsync(
-      `sudo ${binaryPath} add --domain ${domain} --port ${port} ${sslFlag} ${emailFlag} ${maxBodySizeFlag}`
+      `${sudoCmd} ${binaryPath} add --domain ${domain} --port ${port} ${sslFlag} ${emailFlag} ${maxBodySizeFlag}`,
     );
     Logger.info(stdout.trim());
   } catch (error: any) {
@@ -418,10 +465,17 @@ async function addDomain(
  *
  * @param binaryPath - Path to the xynginc binary.
  * @param domain - The domain name to remove.
+ * @param sudoCmd - Sudo prefix to use.
  */
-async function removeDomain(binaryPath: string, domain: string): Promise<void> {
+async function removeDomain(
+  binaryPath: string,
+  domain: string,
+  sudoCmd: string = "sudo",
+): Promise<void> {
   try {
-    const { stdout } = await execAsync(`sudo ${binaryPath} remove ${domain}`);
+    const { stdout } = await execAsync(
+      `${sudoCmd} ${binaryPath} remove ${domain}`,
+    );
     Logger.info(stdout.trim());
   } catch (error: any) {
     throw new Error(`Failed to remove domain: ${error.message}`);
@@ -432,11 +486,15 @@ async function removeDomain(binaryPath: string, domain: string): Promise<void> {
  * Lists all configured domains.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  * @returns A list of domain names.
  */
-async function listDomains(binaryPath: string): Promise<string[]> {
+async function listDomains(
+  binaryPath: string,
+  sudoCmd: string = "sudo",
+): Promise<string[]> {
   try {
-    const { stdout } = await execAsync(`sudo ${binaryPath} list`);
+    const { stdout } = await execAsync(`${sudoCmd} ${binaryPath} list`);
     // Parse output to extract domain names
     const lines = stdout.split("\n").filter((line) => line.includes(" - "));
     return lines.map((line) => line.trim().split(" - ")[0]);
@@ -449,10 +507,14 @@ async function listDomains(binaryPath: string): Promise<string[]> {
  * Reloads the Nginx service using the binary.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  */
-async function reloadNginx(binaryPath: string): Promise<void> {
+async function reloadNginx(
+  binaryPath: string,
+  sudoCmd: string = "sudo",
+): Promise<void> {
   try {
-    const { stdout } = await execAsync(`sudo ${binaryPath} reload`);
+    const { stdout } = await execAsync(`${sudoCmd} ${binaryPath} reload`);
     Logger.info(stdout.trim());
   } catch (error: any) {
     throw new Error(`Failed to reload Nginx: ${error.message}`);
@@ -463,11 +525,15 @@ async function reloadNginx(binaryPath: string): Promise<void> {
  * Tests the Nginx configuration validity using the binary.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  * @returns True if the configuration is valid.
  */
-async function testNginx(binaryPath: string): Promise<boolean> {
+async function testNginx(
+  binaryPath: string,
+  sudoCmd: string = "sudo",
+): Promise<boolean> {
   try {
-    await execAsync(`sudo ${binaryPath} test`);
+    await execAsync(`${sudoCmd} ${binaryPath} test`);
     return true;
   } catch {
     return false;
@@ -478,11 +544,15 @@ async function testNginx(binaryPath: string): Promise<boolean> {
  * Gets the status of managed sites using the binary.
  *
  * @param binaryPath - Path to the xynginc binary.
+ * @param sudoCmd - Sudo prefix to use.
  * @returns The status output.
  */
-async function getStatus(binaryPath: string): Promise<string> {
+async function getStatus(
+  binaryPath: string,
+  sudoCmd: string = "sudo",
+): Promise<string> {
   try {
-    const { stdout } = await execAsync(`sudo ${binaryPath} status`);
+    const { stdout } = await execAsync(`${sudoCmd} ${binaryPath} status`);
     return stdout;
   } catch (error: any) {
     throw new Error(`Failed to get status: ${error.message}`);

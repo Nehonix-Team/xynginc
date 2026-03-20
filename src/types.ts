@@ -86,4 +86,10 @@ export interface XyNginCPluginOptions extends XyNginCConfig {
    * @default true
    */
   installRequirements?: boolean;
+
+  /**
+   * Sudo password to use for running xynginc commands in background environments (like PM2).
+   * If not provided, it will fallback to process.env.SUDO_PASSWORD.
+   */
+  sudoPassword?: string;
 }
