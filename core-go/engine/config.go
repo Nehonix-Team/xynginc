@@ -117,19 +117,15 @@ func ensureIndexPageExists() error {
 		os.Remove(defaultNginxIndex)
 	}
 
-	if _, err := os.Stat(indexPagePath); os.IsNotExist(err) {
-		logger.Info(" Creating XyNginC index page")
-		indexHTML, err := generateIndexHTML()
-		if err != nil {
-			return fmt.Errorf("failed to generate index HTML: %v", err)
-		}
-		if err := os.WriteFile(indexPagePath, []byte(indexHTML), 0644); err != nil {
-			return fmt.Errorf("failed to write index page: %v", err)
-		}
-		logger.Success("   ✓ XyNginC index page created")
-	} else {
-		logger.Success("   ✓ XyNginC index page already exists.")
+	logger.Info("   Updating XyNginC index page")
+	indexHTML, err := generateIndexHTML()
+	if err != nil {
+		return fmt.Errorf("failed to generate index HTML: %v", err)
 	}
+	if err := os.WriteFile(indexPagePath, []byte(indexHTML), 0644); err != nil {
+		return fmt.Errorf("failed to write index page: %v", err)
+	}
+	logger.Success("   ✓ XyNginC index page updated")
 
 	return nil
 }
@@ -212,11 +208,9 @@ func ensureErrorPagesExist(domain *string) error {
 	for filename, content := range errorPages {
 		errorPagePath := filepath.Join(errorPageDir, filename)
 
-		if _, err := os.Stat(errorPagePath); os.IsNotExist(err) {
-			logger.Info(fmt.Sprintf("   Writing error page: %s", filename))
-			if err := os.WriteFile(errorPagePath, []byte(content), 0644); err != nil {
-				return fmt.Errorf("failed to write error page %s: %v", errorPagePath, err)
-			}
+		logger.Info(fmt.Sprintf("   Updating error page: %s", filename))
+		if err := os.WriteFile(errorPagePath, []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to write error page %s: %v", errorPagePath, err)
 		}
 	}
 
