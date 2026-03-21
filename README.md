@@ -144,6 +144,9 @@ interface XyNginCPluginOptions {
 
   /** Password to execute sudo commands silently in background environments like PM2 */
   sudoPassword?: string;
+
+  /** Automatically open Port 80 and 443 in the firewall (UFW) if they are blocked (default: false) */
+  autoFixFirewall?: boolean;
 }
 ```
 
@@ -218,7 +221,8 @@ sudo xynginc status
       "email": "admin@example.com"
     }
   ],
-  "auto_reload": true
+  "auto_reload": true,
+  "autofix_firewall": true
 }
 ```
 
@@ -239,8 +243,12 @@ XyNginC requires elevated privileges to perform the following actions:
 - Executing `certbot` for SSL certificate generation
 - Reloading the Nginx service
 
-**Note**: Ensure your XyPriss server is started with `sudo` privileges when using this plugin, or configure `sudoers` to allow specific commands for the user.
-Alternatively, if your application runs in the background (e.g. using PM2), you can configure the plugin with the `sudoPassword` option or the `SUDO_PASSWORD` environment variable, to inject the password implicitly without an interactive prompt.
+**Security Note**: XyNginC requires elevated privileges to manage Nginx and Firewall rules.
+
+- **Sudoers**: We recommend configuring `sudoers` to allow specific commands for the user.
+- **Sudo Password**: If your application runs in the background (e.g. using PM2), you can use the `sudoPassword` option or the `SUDO_PASSWORD` environment variable.
+  - **Reassurance**: The password is used **only** to execute the local `xynginc` binary and system commands like `ufw` or `service`. It is never stored, logged, or transmitted outside of your server.
+- **Firewall**: The `autoFixFirewall` option allows XyNginC to automatically detect and open Port 80/443 if `ufw` is active. This is useful for automated SSL validation.
 
 ## Troubleshooting
 

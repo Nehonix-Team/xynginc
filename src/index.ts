@@ -25,6 +25,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
   const {
     domains,
     autoReload = true,
+    autoFixFirewall = false,
     binaryPath,
     autoDownload = true,
     version = "latest",
@@ -34,12 +35,12 @@ export default function XNCP(options: XyNginCPluginOptions) {
 
   return Plugin.create({
     name: "xynginc",
-    version: "1.0.70",
+    version: "1.0.81",
     description: "XyPriss Nginx Controller - Automatic Nginx & SSL management",
 
     onRegister: async (server) => {
       Logger.info("[XyNginC] Registering plugin...");
-      validateConfig({ domains, autoReload });
+      validateConfig({ domains, autoReload, autoFixFirewall });
     },
 
     onServerStart: async (_server) => {
@@ -47,6 +48,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
       await startXNCPlugin(_server, {
         autoDownload,
         autoReload,
+        autoFixFirewall,
         binaryPath: binaryPath,
         version,
         domains,

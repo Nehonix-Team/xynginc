@@ -11,495 +11,587 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Error 502 - XyNginC</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.5;
-        }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg: #080c10;
+        --surface: #0d1117;
+        --surface-2: #0a0e13;
+        --border: rgba(255,255,255,0.07);
+        --border-err: rgba(255,80,60,0.25);
+        --accent: #00e5a0;
+        --accent-dim: rgba(0,229,160,0.08);
+        --err: #ff5c3a;
+        --err-dim: rgba(255,92,58,0.1);
+        --warn: #f5a623;
+        --text: #e8edf2;
+        --text-muted: #5a6a7a;
+        --text-dim: #1e2a36;
+        --mono: 'Space Mono', monospace;
+        --sans: 'Syne', sans-serif;
       }
 
-      @keyframes slideRight {
-        0%,
-        100% {
-          transform: translateX(0);
-        }
-        50% {
-          transform: translateX(5px);
-        }
+      html, body { height: 100%; }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
-      @keyframes slideLeft {
-        0%,
-        100% {
-          transform: translateX(0);
-        }
-        50% {
-          transform: translateX(-5px);
-        }
+      /* Grid */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--text-dim) 1px, transparent 1px),
+          linear-gradient(90deg, var(--text-dim) 1px, transparent 1px);
+        background-size: 48px 48px;
+        opacity: 0.4;
+        pointer-events: none;
+        z-index: 0;
       }
 
-      @keyframes bounce {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(-10px);
-        }
+      /* Topbar */
+      .topbar {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 32px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(8,12,16,0.9);
+        backdrop-filter: blur(12px);
       }
 
-      .arrow-right {
-        animation: slideRight 2s ease-in-out infinite;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
 
-      .arrow-left {
-        animation: slideLeft 2s ease-in-out infinite;
+      .brand-mark {
+        width: 28px; height: 28px;
+        background: var(--accent);
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
       }
 
-      .pulse-icon {
-        animation: pulse 2s ease-in-out infinite;
+      .brand-mark svg { width: 16px; height: 16px; color: var(--bg); }
+
+      .brand-name {
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
       }
 
-      .bounce-icon {
-        animation: bounce 2s ease-in-out infinite;
+      .brand-name span { color: var(--text); }
+
+      .topbar-meta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
       }
 
-      @keyframes countdown {
-        from {
-          stroke-dashoffset: 0;
-        }
-        to {
-          stroke-dashoffset: 283;
-        }
+      /* Main */
+      main {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 48px 32px;
       }
 
-      .countdown-circle {
-        animation: countdown 30s linear infinite;
-        stroke-dasharray: 283;
-        stroke-dashoffset: 0;
-        transform-origin: center;
-        transform: rotate(-90deg);
+      /* Error hero */
+      .error-hero {
+        margin-bottom: 40px;
+        animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
       }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .error-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--err-dim);
+        border: 1px solid var(--border-err);
+        border-radius: 100px;
+        padding: 4px 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--err);
+        letter-spacing: 0.06em;
+        margin-bottom: 20px;
+      }
+
+      .error-tag-dot {
+        width: 6px; height: 6px;
+        background: var(--err);
+        border-radius: 50%;
+        animation: blink 1.5s ease-in-out infinite;
+      }
+
+      @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+      .error-code-line {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+
+      .error-number {
+        font-family: var(--mono);
+        font-size: clamp(56px, 10vw, 80px);
+        font-weight: 700;
+        color: var(--err);
+        line-height: 1;
+        letter-spacing: -0.03em;
+        opacity: 0.85;
+      }
+
+      .error-title {
+        font-size: clamp(20px, 3vw, 28px);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+
+      .error-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .error-meta span { letter-spacing: 0.04em; }
+
+      /* Connection diagram */
+      .section-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        opacity: 0.7;
+      }
+
+      .diagram-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 24px;
+        animation: fadeUp 0.5s 0.1s cubic-bezier(0.16,1,0.3,1) both;
+      }
+
+      .diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+      }
+
+      .node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        min-width: 90px;
+      }
+
+      .node-icon {
+        width: 56px; height: 56px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        position: relative;
+      }
+
+      .node-icon svg { width: 24px; height: 24px; }
+
+      .node-status-dot {
+        position: absolute;
+        bottom: -4px; right: -4px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        border: 2px solid var(--surface);
+      }
+
+      .dot-ok { background: var(--accent); }
+      .dot-err { background: var(--err); animation: blink 1.5s ease-in-out infinite; }
+
+      .node-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      .node-label strong {
+        display: block;
+        font-size: 11px;
+        color: var(--text);
+        margin-bottom: 2px;
+        font-weight: 700;
+      }
+
+      .node-label .ok  { color: var(--accent); font-size: 10px; }
+      .node-label .err { color: var(--err);    font-size: 10px; }
+
+      /* Connector */
+      .connector {
+        flex: 1;
+        height: 1px;
+        position: relative;
+        margin: 0 4px;
+        margin-bottom: 28px;
+      }
+
+      .connector-line {
+        height: 1px;
+        background: var(--border);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .connector-line.active::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        animation: flow 2s linear infinite;
+      }
+
+      .connector-line.broken {
+        background: repeating-linear-gradient(90deg, var(--border-err) 0, var(--border-err) 6px, transparent 6px, transparent 12px);
+      }
+
+      @keyframes flow {
+        to { left: 200%; }
+      }
+
+      /* Two-column layout */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+        animation: fadeUp 0.5s 0.2s cubic-bezier(0.16,1,0.3,1) both;
+      }
+
+      @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+      .info-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      .info-card-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+      }
+
+      .info-card-body {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-muted);
+      }
+
+      /* Action row */
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        animation: fadeUp 0.5s 0.3s cubic-bezier(0.16,1,0.3,1) both;
+        margin-bottom: 32px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--bg);
+      }
+
+      .btn-primary:hover { opacity: 0.85; }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+      }
+
+      .btn-ghost:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+      /* Countdown bar */
+      .countdown-bar-wrap {
+        animation: fadeUp 0.5s 0.35s cubic-bezier(0.16,1,0.3,1) both;
+      }
+
+      .countdown-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .countdown-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .countdown-val {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+      }
+
+      .bar-track {
+        height: 3px;
+        background: var(--border);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 99px;
+        transition: width 1s linear;
+        box-shadow: 0 0 8px var(--accent);
+      }
+
+      /* Footer */
+      footer {
+        position: relative;
+        z-index: 10;
+        border-top: 1px solid var(--border);
+        padding: 16px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(8,12,16,0.9);
+      }
+
+      footer span, footer a {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+
+      footer a:hover { color: var(--accent); }
     </style>
   </head>
-  <body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <div class="bg-white border-b border-gray-200 py-4 px-6">
-      <div class="max-w-7xl mx-auto flex items-center">
-        <div class="flex items-center space-x-2">
-          <div
-            class="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center"
-          >
-            <span class="text-white font-bold text-sm">XN</span>
-          </div>
-          <span class="text-xl font-semibold text-gray-900">XNCP</span>
+  <body>
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
         </div>
+        <span class="brand-name"><span>NEHONIX</span> · XyNginC</span>
       </div>
+      <div class="topbar-meta" id="ts">—</div>
     </div>
 
-    <div class="max-w-5xl mx-auto px-6 py-12">
-      <!-- Error Title -->
-      <div class="mb-8">
-        <h1 class="text-5xl font-light text-gray-900 mb-2">
-          Error
-          <span class="font-semibold" id="error-code">502</span>
-        </h1>
-        <p class="text-2xl text-gray-600" id="error-message">Bad Gateway</p>
-        <div class="mt-4 flex items-center text-sm text-gray-500">
-          <span id="domain">example.com</span>
-          <span class="mx-2">•</span>
-          <span id="ray-id">Ray ID: 0000000000000000</span>
-          <span class="mx-2">•</span>
-          <span id="timestamp">2025-12-16 00:00:00 UTC</span>
+    <main>
+      <!-- Error hero -->
+      <div class="error-hero">
+        <div class="error-tag">
+          <span class="error-tag-dot"></span>
+          GATEWAY ERROR
+        </div>
+        <div class="error-code-line">
+          <span class="error-number" id="error-code">502</span>
+          <span class="error-title" id="error-message">Bad Gateway</span>
+        </div>
+        <div class="error-meta">
+          <span id="domain">—</span>
+          <span id="ray-id">Ray ID: —</span>
+          <span id="timestamp">—</span>
         </div>
       </div>
 
-      <!-- Connection Diagram -->
-      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
-        <div class="grid grid-cols-7 gap-4 items-center">
+      <!-- Diagram -->
+      <div class="section-label">Connection path</div>
+      <div class="diagram-card">
+        <div class="diagram">
           <!-- Browser -->
-          <div class="col-span-2 flex flex-col items-center">
-            <div
-              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 bounce-icon relative"
-            >
-              <svg
-                class="w-12 h-12 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                ></path>
+          <div class="node">
+            <div class="node-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#e8edf2">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
-              <div
-                class="absolute -bottom-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"
-              ></div>
+              <span class="node-status-dot dot-ok"></span>
             </div>
-            <div class="text-center">
-              <div class="text-sm font-medium text-gray-700">You</div>
-              <div class="text-xs text-gray-500">Browser</div>
-              <div class="text-xs font-semibold text-green-600 mt-1">
-                Working
-              </div>
+            <div class="node-label">
+              <strong>Client</strong>
+              Browser<br><span class="ok">OK</span>
             </div>
           </div>
 
-          <!-- Arrow Right 1 -->
-          <div class="flex justify-center arrow-right">
-            <svg
-              class="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              ></path>
-            </svg>
+          <!-- Connector active -->
+          <div class="connector">
+            <div class="connector-line active"></div>
           </div>
 
-          <!-- XyNginC / XNCP -->
-          <div class="col-span-1 flex flex-col items-center">
-            <div
-              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 pulse-icon relative"
-            >
-              <svg
-                class="w-12 h-12 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
-                ></path>
+          <!-- Proxy -->
+          <div class="node">
+            <div class="node-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#e8edf2">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
               </svg>
-              <div
-                class="absolute -bottom-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"
-              ></div>
+              <span class="node-status-dot dot-ok"></span>
             </div>
-            <div class="text-center">
-              <div class="text-sm font-medium text-gray-700">NEHONIX</div>
-              <div class="text-xs text-gray-500">XNCP</div>
-              <div class="text-xs font-semibold text-green-600 mt-1">
-                Working
-              </div>
+            <div class="node-label">
+              <strong>XNCP</strong>
+              Proxy<br><span class="ok">OK</span>
             </div>
           </div>
 
-          <!-- Arrow Right 2 -->
-          <div class="flex justify-center arrow-left">
-            <svg
-              class="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              ></path>
-            </svg>
+          <!-- Connector broken -->
+          <div class="connector">
+            <div class="connector-line broken"></div>
           </div>
 
-          <!-- Host/Server -->
-          <div class="col-span-2 flex flex-col items-center">
-            <div
-              class="w-24 h-24 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mb-3 bounce-icon relative"
-            >
-              <svg
-                class="w-12 h-12 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-                ></path>
+          <!-- Origin -->
+          <div class="node">
+            <div class="node-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#ff5c3a">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
-              <div
-                class="absolute -bottom-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
-              ></div>
+              <span class="node-status-dot dot-err"></span>
             </div>
-            <div class="text-center">
-              <div class="text-sm font-medium text-gray-700" id="host-domain">
-                example.com
-              </div>
-              <div class="text-xs text-gray-500">Host</div>
-              <div class="text-xs font-semibold text-red-600 mt-1">Error</div>
+            <div class="node-label">
+              <strong id="host-domain">Origin</strong>
+              Server<br><span class="err">Error</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Two Column Layout -->
-      <div class="grid md:grid-cols-2 gap-8">
-        <!-- What happened? -->
-        <div>
-          <h2 class="text-2xl font-semibold text-gray-900 mb-4">
-            What happened?
-          </h2>
-          <p class="text-gray-600 leading-relaxed mb-4">
-            The server returned an invalid or incomplete response.
-          </p>
+      <!-- Two-column info -->
+      <div class="two-col">
+        <div class="info-card">
+          <div class="info-card-title">Visitor</div>
+          <div class="info-card-body">Please try again in a few minutes. The issue is on the server side.</div>
         </div>
-
-        <!-- What can I do? -->
-        <div>
-          <h2 class="text-2xl font-semibold text-gray-900 mb-4">
-            What can I do?
-          </h2>
-
-          <div class="mb-6">
-            <h3 class="font-semibold text-gray-900 mb-2">
-              If you are a visitor of this website:
-            </h3>
-            <p class="text-gray-600">Please try again in a few minutes.</p>
-          </div>
-
-          <div>
-            <h3 class="font-semibold text-gray-900 mb-2">
-              If you are the owner of this website:
-            </h3>
-            <div
-              class="max-w-md mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
-            >
-              <div class="flex items-start space-x-3 mb-4">
-                <svg
-                  class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  ></path>
-                </svg>
-                <div>
-                  <p class="text-sm text-gray-600 leading-relaxed">
-                    A connection issue is preventing communication between
-                    XyNginC and your XyPriss server.
-                  </p>
-                </div>
-              </div>
-              <p class="text-sm text-gray-600 mb-6 leading-relaxed">
-                Please review the XyPriss server logs for detailed error
-                information and verify network connectivity, firewall rules, and
-                service status.
-              </p>
-              <div class="flex space-x-3">
-                <button
-                  onclick="location.reload()"
-                  class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out"
-                >
-                  Refresh Page
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="info-card" style="border-color: var(--border-err);">
+          <div class="info-card-title" style="color: var(--err)">Owner</div>
+          <div class="info-card-body">A connection issue is preventing XyNginC from reaching your XyPriss server. Check logs, firewall rules and service status.</div>
         </div>
       </div>
 
-      <!-- Additional Resources -->
-      <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <div class="flex items-start">
-          <svg
-            class="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-              clip-rule="evenodd"
-            ></path>
+      <!-- Actions -->
+      <div class="actions">
+        <button class="btn btn-primary" onclick="location.reload()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
-          <div>
-            <h3 class="font-semibold text-blue-900 mb-1">
-              Additional troubleshooting resources
-            </h3>
-            <p class="text-sm text-blue-800">
-              XyNginC will automatically retry this connection. This page will
-              refresh in
-              <span id="countdown-text">30</span> seconds.
-            </p>
-          </div>
-        </div>
+          Refresh
+        </button>
+        <a href="/" class="btn btn-ghost">← Home</a>
       </div>
 
-      <!-- Auto-refresh indicator -->
-      <div class="mt-6 flex items-center justify-center space-x-3">
-        <div class="relative w-10 h-10">
-          <svg class="w-10 h-10 transform -rotate-90" viewBox="0 0 40 40">
-            <circle
-              cx="20"
-              cy="20"
-              r="18"
-              stroke="#e5e7eb"
-              stroke-width="4"
-              fill="none"
-              class="opacity-25"
-            />
-            <circle
-              cx="20"
-              cy="20"
-              r="18"
-              stroke="#3b82f6"
-              stroke-width="4"
-              fill="none"
-              class="countdown-circle"
-            />
-          </svg>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <span class="text-xs font-bold text-blue-600" id="countdown"
-              >30</span
-            >
-          </div>
+      <!-- Countdown bar -->
+      <div class="countdown-bar-wrap">
+        <div class="countdown-row">
+          <span class="countdown-label">Auto-refresh in</span>
+          <span class="countdown-val"><span id="countdown">30</span>s</span>
         </div>
-        <p class="text-sm text-gray-500">Auto-refreshing...</p>
+        <div class="bar-track">
+          <div class="bar-fill" id="bar" style="width:100%"></div>
+        </div>
       </div>
-    </div>
+    </main>
 
-    <!-- Footer -->
-    <div class="border-t border-gray-200 mt-12 py-6">
-      <div class="max-w-5xl mx-auto px-6">
-        <div
-          class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500"
-        >
-          <div class="mb-4 md:mb-0">
-            <span class="font-semibold text-gray-700">XyNginC</span> by NEHONIX
-          </div>
-          <div class="text-center md:text-right">
-            Performance & security by XyPriss Network Content Platform
-          </div>
-        </div>
-      </div>
-    </div>
+    <footer>
+      <span>XyNginC by NEHONIX</span>
+      <a href="https://github.com/Nehonix-Team/xynginc">GitHub ↗</a>
+    </footer>
 
     <script>
-      // Error code mapping for user-friendly messages
       const ERROR_MESSAGES = {
-        301: "Moved Permanently",
-        400: "Bad Request",
-        401: "Unauthorized",
-        403: "Forbidden",
-        404: "Not Found",
-        500: "Internal Server Error",
-        502: "Bad Gateway",
-        503: "Service Unavailable",
-        504: "Gateway Timeout",
+        301:"Moved Permanently",400:"Bad Request",401:"Unauthorized",
+        403:"Forbidden",404:"Not Found",500:"Internal Server Error",
+        502:"Bad Gateway",503:"Service Unavailable",504:"Gateway Timeout"
       };
 
-      const ERROR_DESCRIPTIONS = {
-        301: "The requested resource has been moved to a new location.",
-        400: "The request could not be understood by the server due to malformed syntax.",
-        401: "You need to authenticate to access this resource.",
-        403: "You don't have permission to access this resource.",
-        404: "The requested resource could not be found on this server.",
-        500: "The server encountered an unexpected condition that prevented it from fulfilling the request.",
-        502: "The server returned an invalid or incomplete response.",
-        503: "The server is temporarily unable to handle the request.",
-        504: "The server did not receive a timely response from the upstream server.",
-      };
+      const errorCode = new URLSearchParams(window.location.search).get('code') || '502';
+      const errorMsg  = ERROR_MESSAGES[errorCode] || 'Unknown Error';
+      const domain    = window.location.hostname;
+      const rayId     = Array.from({length:16},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
 
-      // Get error code from URL query parameter or default to 502
-      function getErrorCode() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get("code") || "502";
-        return code;
-      }
+      document.getElementById('error-code').textContent    = errorCode;
+      document.getElementById('error-message').textContent = errorMsg;
+      document.getElementById('domain').textContent        = domain;
+      document.getElementById('host-domain').textContent   = domain;
+      document.getElementById('ray-id').textContent        = 'Ray ID: ' + rayId;
+      document.title = `Error ${errorCode} - XyNginC`;
 
-      // Generate Ray ID (unique request identifier)
-      function generateRayId() {
-        const chars = "0123456789abcdef";
-        let rayId = "";
-        for (let i = 0; i < 16; i++) {
-          rayId += chars[Math.floor(Math.random() * chars.length)];
-        }
-        return rayId;
-      }
+      let countdown = 30;
 
-      // Get current timestamp in ISO format
-      function getCurrentTimestamp() {
-        return (
-          new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC"
-        );
-      }
+      function tick() {
+        const now = new Date();
+        document.getElementById('ts').textContent =
+          now.toISOString().replace('T',' ').substring(0,19) + ' UTC';
+        document.getElementById('timestamp').textContent =
+          now.toISOString().replace('T',' ').substring(0,19) + ' UTC';
 
-      // Configuration - all dynamically generated
-      let countdown = 30; // Auto-refresh countdown in seconds
-      const errorCode = getErrorCode();
-      const errorMessage = ERROR_MESSAGES[errorCode] || "Unknown Error";
-      const errorDescription =
-        ERROR_DESCRIPTIONS[errorCode] || "An unexpected error occurred.";
-      const domain = window.location.hostname;
-      const rayId = generateRayId();
-      const timestamp = getCurrentTimestamp();
-
-      // Update display with dynamically generated values
-      function initializeDisplay() {
-        document.getElementById("error-code").textContent = errorCode;
-        document.getElementById("error-message").textContent = errorMessage;
-        document.getElementById("domain").textContent = domain;
-        document.getElementById("host-domain").textContent = domain;
-        document.getElementById("ray-id").textContent = "Ray ID: " + rayId;
-        document.getElementById("timestamp").textContent = timestamp;
-        document.getElementById("countdown").textContent = countdown;
-        document.getElementById("countdown-text").textContent = countdown;
-        document.title = `Error ${errorCode} - XyNginC`;
-
-        // Update "What happened?" section
-        const descriptionElement = document.querySelector(
-          "p.text-gray-600.leading-relaxed.mb-4",
-        );
-        if (descriptionElement) {
-          descriptionElement.textContent = errorDescription;
-        }
-      }
-
-      // Countdown timer
-      function updateCountdown() {
         countdown--;
-        document.getElementById("countdown").textContent = countdown;
-        document.getElementById("countdown-text").textContent = countdown;
+        document.getElementById('countdown').textContent = countdown;
+        document.getElementById('bar').style.width = (countdown / 30 * 100) + '%';
 
-        if (countdown <= 0) {
-          window.location.reload();
-        }
+        if (countdown <= 0) window.location.reload();
       }
 
-      // Initialize on page load
-      initializeDisplay();
-
-      // Start countdown
-      const countdownInterval = setInterval(updateCountdown, 1000);
-
-      // Clear interval if user manually refreshes
-      window.addEventListener("beforeunload", () => {
-        clearInterval(countdownInterval);
-      });
+      setInterval(tick, 1000);
     </script>
   </body>
 </html>

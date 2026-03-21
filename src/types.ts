@@ -57,6 +57,12 @@ export interface XyNginCConfig {
    * @default true
    */
   autoReload?: boolean;
+
+  /**
+   * Whether to automatically open Port 80 and 443 in the firewall (UFW) if they are blocked.
+   * @default false
+   */
+  autoFixFirewall?: boolean;
 }
 
 /**

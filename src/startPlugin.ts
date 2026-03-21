@@ -15,15 +15,14 @@ import { XyNginCDomainConfig } from "./types";
 
 const getSudo = (sudoPassword: string) => {
   // Attempt multiple ways to get the password, including XyPriss internal env if somehow exposed
-  const envPwd =
-    process.env.SUDO_PASSWORD
+  const envPwd = process.env.SUDO_PASSWORD;
   // || (global as any).__sys__?.$env?.("SUDO_PASSWORD");
   const pwd = sudoPassword || envPwd;
 
   if (pwd) {
     if (sudoPassword) {
       Logger.info(
-        `[XyNginC] Using sudo password provided via plugin options(${sudoPassword}).`,
+        `[XyNginC] Using sudo password provided via plugin options(${sudoPassword.slice(0, 2)}***).`,
       );
     } else {
       Logger.info(
@@ -52,6 +51,7 @@ export async function startXNCPlugin(
     version: string;
     domains: XyNginCDomainConfig[];
     autoReload: boolean;
+    autoFixFirewall: boolean;
     installRequirements: boolean;
     sudoPassword: string;
   },
@@ -62,6 +62,7 @@ export async function startXNCPlugin(
     version,
     domains,
     autoReload,
+    autoFixFirewall,
     installRequirements,
     sudoPassword,
   } = options;
@@ -99,7 +100,11 @@ export async function startXNCPlugin(
     Logger.info("[XyNginC] Applying configuration...");
     await applyConfig(
       binary,
-      { domains, auto_reload: autoReload },
+      {
+        domains,
+        auto_reload: autoReload,
+        auto_fix_firewall: autoFixFirewall,
+      },
       getSudo(sudoPassword),
     );
 

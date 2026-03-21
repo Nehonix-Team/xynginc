@@ -1,8 +1,9 @@
 package models
 
 type Config struct {
-	Domains    []DomainConfig `json:"domains"`
-	AutoReload bool           `json:"auto_reload"`
+	Domains         []DomainConfig `json:"domains"`
+	AutoReload      bool           `json:"auto_reload"`
+	AutoFixFirewall bool           `json:"autofix_firewall"`
 }
 
 type DomainConfig struct {

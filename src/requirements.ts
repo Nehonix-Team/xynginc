@@ -55,12 +55,17 @@ export async function installRequirementsHandler(
  */
 export async function applyConfig(
   binaryPath: string,
-  config: { domains: XyNginCDomainConfig[]; auto_reload: boolean },
+  config: {
+    domains: XyNginCDomainConfig[];
+    auto_reload: boolean;
+    auto_fix_firewall: boolean;
+  },
   sudoCmd: string,
 ): Promise<void> {
-  // Map camelCase to snake_case for Rust core
+  // Map camelCase to snake_case for Go core
   const mappedConfig = {
     auto_reload: config.auto_reload,
+    autofix_firewall: config.auto_fix_firewall,
     domains: config.domains.map((d) => ({
       domain: d.domain,
       port: d.port,

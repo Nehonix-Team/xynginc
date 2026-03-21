@@ -11,91 +11,323 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NEHONIX - XyNginC</title>
-
-    <!-- Favicon -->
-    <link
-      rel="icon"
-      type="image/jpeg"
-      href="https://dll.nehonix.com/assets/NEHONIX/logo/nehonix.jpeg"
-    />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-
+    <link rel="icon" type="image/jpeg" href="https://dll.nehonix.com/assets/NEHONIX/logo/nehonix.jpeg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      @keyframes float {
-        0%,
-        100% {
-          transform: translateY(0px);
-        }
-        50% {
-          transform: translateY(-10px);
-        }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg: #080c10;
+        --surface: #0d1117;
+        --surface-2: #111820;
+        --border: rgba(255,255,255,0.07);
+        --accent: #00e5a0;
+        --accent-dim: rgba(0,229,160,0.12);
+        --accent-glow: rgba(0,229,160,0.25);
+        --text: #e8edf2;
+        --text-muted: #5a6a7a;
+        --text-dim: #2a3a4a;
+        --mono: 'Space Mono', monospace;
+        --sans: 'Syne', sans-serif;
       }
-      .float-animation {
-        animation: float 3s ease-in-out infinite;
+
+      html, body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
       }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Grid background */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--text-dim) 1px, transparent 1px),
+          linear-gradient(90deg, var(--text-dim) 1px, transparent 1px);
+        background-size: 48px 48px;
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      /* Glow orb */
+      body::after {
+        content: '';
+        position: fixed;
+        top: -20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 70%);
+        pointer-events: none;
+      }
+
+      .card {
+        position: relative;
+        width: 100%;
+        max-width: 560px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 48px 40px;
+        overflow: hidden;
+        animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;
+      }
+
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        opacity: 0.6;
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Brand header */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 40px;
+      }
+
+      .brand-mark {
+        width: 32px;
+        height: 32px;
+        background: var(--accent);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .brand-mark svg {
+        width: 18px;
+        height: 18px;
+        color: var(--bg);
+      }
+
+      .brand-name {
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      .brand-name span {
+        color: var(--text);
+      }
+
+      /* Status badge */
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--accent-dim);
+        border: 1px solid rgba(0,229,160,0.2);
+        border-radius: 100px;
+        padding: 5px 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        margin-bottom: 28px;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--accent);
+        border-radius: 50%;
+        animation: blink 2s ease-in-out infinite;
+      }
+
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      /* Title */
+      h1 {
+        font-size: clamp(28px, 4vw, 36px);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        margin-bottom: 14px;
+      }
+
+      .description {
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text-muted);
+        margin-bottom: 36px;
+      }
+
+      /* Divider */
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin-bottom: 28px;
+      }
+
+      /* Info row */
+      .info-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .info-row:last-child { border-bottom: none; }
+
+      .info-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+
+      .info-value {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text);
+      }
+
+      .info-value.ok {
+        color: var(--accent);
+      }
+
+      /* Footer */
+      .card-footer {
+        margin-top: 36px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .footer-brand {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .footer-link {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+
+      .footer-link:hover { color: var(--accent); }
+
+      /* Corner decorations */
+      .corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        opacity: 0.4;
+      }
+
+      .corner-tl { top: 16px; left: 16px; border-top: 1.5px solid var(--accent); border-left: 1.5px solid var(--accent); }
+      .corner-tr { top: 16px; right: 16px; border-top: 1.5px solid var(--accent); border-right: 1.5px solid var(--accent); }
+      .corner-bl { bottom: 16px; left: 16px; border-bottom: 1.5px solid var(--accent); border-left: 1.5px solid var(--accent); }
+      .corner-br { bottom: 16px; right: 16px; border-bottom: 1.5px solid var(--accent); border-right: 1.5px solid var(--accent); }
     </style>
   </head>
-  <body
-    class="bg-gradient-to-br from-blue-50 via-white to-indigo-50 min-h-screen flex items-center justify-center"
-  >
-    <div class="max-w-2xl w-full text-center">
-      <div class="bg-white rounded-3xl shadow-2xl p-12 border border-gray-100">
-        <div class="mb-8">
-          <div
-            class="w-24 h-24 mx-auto bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center float-animation"
-          >
-            <svg
-              class="w-12 h-12 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-          </div>
+  <body>
+    <div class="card">
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+
+      <div class="brand">
+        <div class="brand-mark">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
         </div>
+        <div class="brand-name"><span>NEHONIX</span> · XyNginC</div>
+      </div>
 
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">{{TITLE}}</h1>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        OPERATIONAL
+      </div>
 
-        <p class="text-gray-600 text-lg mb-8">{{DESCRIPTION}}</p>
+      <h1>{{TITLE}}</h1>
+      <p class="description">{{DESCRIPTION}}</p>
 
-        <div
-          class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6 mb-8"
-        >
-          <div class="flex items-center justify-center">
-            <svg
-              class="w-6 h-6 text-green-600 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clip-rule="evenodd"
-              ></path>
-            </svg>
-            <span class="text-green-800 font-semibold"
-              >Server is running successfully!</span
-            >
-          </div>
-        </div>
+      <div class="divider"></div>
 
-        <div class="text-sm text-gray-500">
-          <p>
-            NEHONIX
-            <a href="https://github.com/Nehonix-Team/xynginc">XyNginC</a>
-          </p>
-          <p class="mt-2">
-            If you see this page, your nginx reverse proxy is working correctly.
-          </p>
-        </div>
+      <div class="info-row">
+        <span class="info-label">Proxy Status</span>
+        <span class="info-value ok">Running</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Engine</span>
+        <span class="info-value">XyNginC / NEHONIX</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Uptime</span>
+        <span class="info-value ok" id="uptime">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Timestamp</span>
+        <span class="info-value" id="ts">—</span>
+      </div>
+
+      <div class="card-footer">
+        <span class="footer-brand">© 2025 NEHONIX</span>
+        <a href="https://github.com/Nehonix-Team/xynginc" class="footer-link">GitHub ↗</a>
       </div>
     </div>
+
+    <script>
+      const start = Date.now();
+      function pad(n) { return String(n).padStart(2,'0'); }
+
+      function updateTime() {
+        const now = new Date();
+        document.getElementById('ts').textContent =
+          now.toISOString().replace('T',' ').substring(0,19) + ' UTC';
+
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        const h = Math.floor(elapsed/3600), m = Math.floor((elapsed%3600)/60), s = elapsed%60;
+        document.getElementById('uptime').textContent =
+          elapsed < 3600 ? `${pad(m)}m ${pad(s)}s` : `${pad(h)}h ${pad(m)}m`;
+      }
+
+      updateTime();
+      setInterval(updateTime, 1000);
+    </script>
   </body>
 </html>

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"xynginc/backup"
+	"xynginc/firewall"
 	"xynginc/logger"
 	"xynginc/models"
 	"xynginc/ssl"
@@ -43,6 +44,13 @@ func ApplyConfig(configPath string, noBackup bool, force bool) error {
 		logger.Step("\n> Creating backup...")
 		if err := backup.CreateBackup(); err != nil {
 			return err
+		}
+	}
+
+	// NEW: Auto-fix firewall if requested
+	if config.AutoFixFirewall {
+		if err := firewall.CheckAndFixFirewall(); err != nil {
+			logger.Warning(fmt.Sprintf("⚠️  Firewall auto-fix failed: %v", err))
 		}
 	}
 
