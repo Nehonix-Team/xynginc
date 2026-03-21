@@ -1,93 +1,106 @@
 #!/usr/bin/env node
 
-const os = require("os");
-const path = require("path");
+const { execSync } = require("child_process");
 const fs = require("fs");
+const path = require("path");
+const os = require("os");
 const https = require("https");
 
 const platform = os.platform();
-const arch = os.arch();
-
-const GITHUB_REPO = "Nehonix-Team/xynginc";
-const BINARY_BASE_NAME = "xynginc";
-const ext = platform === "win32" ? ".exe" : "";
-const binaryName = `${BINARY_BASE_NAME}-${platform}-${arch}${ext}`;
-
-const binDir = path.join(__dirname, "../bin");
-const localPath = path.join(binDir, binaryName);
 
 console.log("📦 [XyNginC] Post-install setup...");
 
-// Create bin directory
+// Only support Linux
+if (platform !== "linux") {
+  console.log(
+    `⚠️  [XyNginC] Platform ${platform} not supported. Only Linux is supported.`,
+  );
+  console.log("   XyNginC will not be installed automatically.");
+  process.exit(0);
+}
+
+const binDir = path.join(__dirname, "../bin");
+const binaryPath = path.join(binDir, "xynginc");
+
+// Create bin directory if it doesn't exist
 if (!fs.existsSync(binDir)) {
   fs.mkdirSync(binDir, { recursive: true });
 }
 
-if (fs.existsSync(localPath)) {
-  console.log("✅ [XyNginC] Binary already exists for this platform.");
-  process.exit(0);
-}
-
-const downloadUrl = `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`;
-console.log(`> [XyNginC] Downloading binary for ${platform}-${arch}...`);
-console.log(`  Url: ${downloadUrl}`);
-
 function download(url, dest) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
     https
       .get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          // Follow redirect
-          https
-            .get(response.headers.location, (redirectResponse) => {
-              if (redirectResponse.statusCode === 404) {
-                return reject(
-                  new Error(
-                    "Release not found. Ensure the binary is released on Github.",
-                  ),
-                );
-              }
-              redirectResponse.pipe(file);
-              file.on("finish", () => {
-                file.close();
-                resolve();
-              });
-            })
-            .on("error", reject);
-        } else if (response.statusCode === 404) {
-          reject(
-            new Error(
-              "Release not found. Ensure the binary is released on Github.",
-            ),
-          );
-        } else {
-          response.pipe(file);
-          file.on("finish", () => {
-            file.close();
-            resolve();
-          });
+        if (
+          response.statusCode >= 300 &&
+          response.statusCode < 400 &&
+          response.headers.location
+        ) {
+          // Recurse for redirects
+          download(response.headers.location, dest).then(resolve).catch(reject);
+          return;
         }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
+          return;
+        }
+
+        const file = fs.createWriteStream(dest);
+        response.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve();
+        });
       })
       .on("error", (err) => {
-        fs.unlinkSync(dest);
+        fs.unlink(dest, () => {});
         reject(err);
       });
   });
 }
 
-download(downloadUrl, localPath)
-  .then(() => {
-    // Make executable if on unix
-    if (platform !== "win32") {
-      fs.chmodSync(localPath, 0o755);
-    }
-    console.log("✅ [XyNginC] Binary downloaded successfully!");
-  })
-  .catch((err) => {
-    console.error("⚠️  [XyNginC] Failed to automatically download binary:");
-    console.error(`   ${err.message}`);
+async function run() {
+  const arch = os.arch();
+  const binaryName = `xynginc-${platform}-${arch}`;
+  const downloadUrl = `https://github.com/Nehonix-Team/xynginc/releases/latest/download/${binaryName}`;
+
+  console.log(`> [XyNginC] Target Binary: ${binaryName}`);
+  console.log(`> [XyNginC] Downloading latest binary from GitHub release...`);
+  console.log(`  URL: ${downloadUrl}`);
+
+  try {
+    await download(downloadUrl, binaryPath);
+
+    // Make script executable
+    fs.chmodSync(binaryPath, 0o755);
+
+    // // Verify binary
+    // try {
+    //   const versionOutput = execSync(`${binaryPath} --version`)
+    //     .toString()
+    //     .trim();
+    //   console.log(`✅ [XyNginC] Binary verified: ${versionOutput}`);
+    // } catch (vErr) {
+    //   throw new Error(
+    //     `Downloaded file is not a valid executable: ${vErr.message}`,
+    //   );
+    // }
+
     console.log(
-      "   The XyPriss plugin will attempt to download it on startup if autoDownload is true.",
+      "✅ [XyNginC] Latest release downloaded and installed successfully in local bin/ folder!",
     );
-  });
+  } catch (error) {
+    console.error("❌ [XyNginC] Installation failed during download!");
+    console.error(`   Error: ${error.message}`);
+    console.log("");
+    console.log("   You can download it manually:");
+    console.log(`   curl -L -o ${binaryPath} ${downloadUrl}`);
+    console.log(`   chmod +x ${binaryPath}`);
+
+    // Don't fail npm install
+    process.exit(0);
+  }
+}
+
+run();

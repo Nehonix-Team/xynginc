@@ -4,46 +4,34 @@ This guide explains how to compile XyNginC (XNCP) from source code. This is usef
 
 ## Prerequisites
 
-To build XNCP, you need the **Rust** programming language and its package manager, **Cargo**.
+To build XNCP, you need the **Go** (Golang) programming language.
 
-### 1. Install Rust and Cargo
+### 1. Install Go
 
-The recommended way to install Rust is via `rustup`:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Follow the on-screen instructions (default installation is usually fine). After installation, restart your shell or run:
-
-```bash
-source "$HOME/.cargo/env"
-```
-
-Verify the installation:
-
-```bash
-rustc --version
-cargo --version
-```
-
-### 2. Install System Dependencies
-
-XNCP relies on OpenSSL. You need to install the development packages for your system.
+You can download and install Go from the official website: [https://go.dev/dl/](https://go.dev/dl/)
 
 **Ubuntu/Debian/Kali:**
 
 ```bash
 sudo apt update
-sudo apt install build-essential libssl-dev pkg-config
+sudo apt install golang-go
 ```
 
 **CentOS/RHEL:**
 
 ```bash
-sudo yum groupinstall "Development Tools"
-sudo yum install openssl-devel
+sudo yum install golang
 ```
+
+Verify the installation:
+
+```bash
+go version
+```
+
+### 2. Verify System Dependencies
+
+XyNginC interacts with the system directly, but the Go compiler statically links most of what it needs. However, the system where you _run_ the binary must support standard Linux syscalls.
 
 ## Building XyNginC
 
@@ -56,26 +44,27 @@ cd xynginc
 
 ### 2. Compile the Project
 
-Navigate to the core directory where the Rust code resides:
+Navigate to the `core-go` directory where the Go code resides:
 
 ```bash
-cd core
+cd core-go
 ```
 
-Build the project in release mode (optimized for performance):
+Download dependencies (if any) and build the project:
 
 ```bash
-cargo build --release
+go mod tidy
+go build -o xynginc
 ```
 
-This process may take a few minutes as it downloads dependencies and compiles the code.
+This process generates a statically linked binary named `xynginc` in the current directory.
 
 ### 3. Locate the Binary
 
 Once the build completes successfully, the binary will be located at:
 
 ```bash
-./target/release/xynginc
+./xynginc
 ```
 
 ## Installation
@@ -83,27 +72,24 @@ Once the build completes successfully, the binary will be located at:
 To install your custom-built binary, simply move it to your system's binary path:
 
 ```bash
-sudo mv ./target/release/xynginc /usr/local/bin/
+sudo mv ./xynginc /usr/local/bin/
 ```
 
 ### Verify Installation
 
-Check that the installed version matches your build:
+Check that the installed version works properly:
 
 ```bash
-xynginc --version
+xynginc check
 ```
 
-## Troubleshooting Build Issues
+## Cross-Compilation (Advanced)
 
-### "linker 'cc' not found"
+One of Go's greatest strengths is effortless cross-compilation. If you are building on x86_64 for an ARM target (like a Raspberry Pi), you can easily specify the OS and Architecture via environment variables:
 
-This means you are missing the C compiler. Ensure you installed `build-essential` (Ubuntu) or "Development Tools" (CentOS).
+```bash
+# Build for 64-bit ARM Linux
+GOOS=linux GOARCH=arm64 go build -o xynginc-arm64
+```
 
-### "openssl-sys" build failed
-
-This usually means `libssl-dev` or `pkg-config` is missing. Re-run the system dependencies installation step.
-
-### Cross-Compilation (Advanced)
-
-If you are building on x86_64 for an ARM target (or vice-versa), you will need to install the appropriate cross-compilation target via rustup (e.g., `rustup target add aarch64-unknown-linux-gnu`) and use a cross-linker. This is outside the scope of this basic guide.
+Simply transfer the `xynginc-arm64` binary to your destination machine and move it to `/usr/local/bin/xynginc`.

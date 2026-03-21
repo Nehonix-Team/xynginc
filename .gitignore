@@ -75,3 +75,5 @@ config/secrets/
 RELEASE_NOTES.md
 
 *bin/
+releases/*
+*releases*

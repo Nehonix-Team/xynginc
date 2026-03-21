@@ -14,8 +14,6 @@ export class Logger {
 
   static error(message: string) {
     console.error(`${this.colors.error}${message}${this.reset}`);
-    process.exit(1);
-    // throw new Error(message);
   }
 
   static warn(message: string) {

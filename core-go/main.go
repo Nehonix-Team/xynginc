@@ -14,8 +14,18 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "xynginc",
-	Version: "1.4.5",
+	Version: "go-ed-1.1.5-stable",
 	Short:   "XyPriss Nginx Controller - Simplified Nginx and SSL management",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Only enforce root for actual operational commands, skip for version/help
+		if cmd.Name() != "help" && cmd.Name() != "xynginc" {
+			if !isRoot() {
+				logger.Error("❌ Error: XyNginC requires root privileges for this command")
+				logger.Error("   Please run with sudo: sudo xynginc " + cmd.Name() + " ...")
+				os.Exit(1)
+			}
+		}
+	},
 }
 
 func isRoot() bool {
@@ -203,12 +213,6 @@ func init() {
 }
 
 func main() {
-	if !isRoot() {
-		logger.Error("❌ Error: XyNginC requires root privileges")
-		logger.Error("   Please run with sudo: sudo xynginc ...")
-		os.Exit(1)
-	}
-
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

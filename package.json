@@ -1,18 +1,19 @@
 {
   "name": "xynginc",
-  "version": "1.0.15",
+  "version": "1.0.78",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "xynginc": "./scripts/cli.js"
+    "xynginc": "./bin/xynginc"
   },
   "scripts": {
-    "build": "tsc && npm run build:go",
-    "build:go": "bash scripts/build-cross.sh",
-    "build:all": "npm run build:go && npm run build",
+    "build": "tsc && xfpm run build:multi",
+    "build:go": "cd core-go && go build -o xynginc && cp xynginc ../bin/",
+    "build:all": "xfpm run build:go && xfpm run build",
+    "build:multi": "bash scripts/build.sh",
     "dev": "tsc --watch",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "xfpm run build",
     "postinstall": "node scripts/postinstall.js",
     "install:manual": "sudo bash scripts/install.sh"
   },
@@ -26,15 +27,19 @@
     "plugin"
   ],
   "author": "Seth Eleazar - iDevo",
-  "license": "MIT",
+  "license": "NOSL",
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "typescript": "^5.3.0"
+    "@types/node": "^20.19.37",
+    "typescript": "^5.9.3"
   },
   "files": [
     "dist",
+    "bin",
     "scripts",
     "README.md"
+  ],
+  "os": [
+    "linux"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -47,6 +52,7 @@
     "url": "https://github.com/Nehonix-Team/xynginc.git/issues"
   },
   "dependencies": {
-    "xypriss": "^5.0.1"
+    "xypriss": "^9.3.71",
+    "xypriss-security": "^2.1.10"
   }
 }

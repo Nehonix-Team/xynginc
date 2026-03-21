@@ -126,7 +126,7 @@ func ensureIndexPageExists() error {
 		if err := os.WriteFile(indexPagePath, []byte(indexHTML), 0644); err != nil {
 			return fmt.Errorf("failed to write index page: %v", err)
 		}
-		logger.Success(fmt.Sprintf("   ✓ XyNginC index page created at %s", indexPagePath))
+		logger.Success("   ✓ XyNginC index page created")
 	} else {
 		logger.Success("   ✓ XyNginC index page already exists.")
 	}

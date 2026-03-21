@@ -72,6 +72,13 @@ func ApplyConfig(configPath string, noBackup bool, force bool) error {
 		return err
 	}
 
+	// NEW: Test and fix nginx EARLY to ensure modules are installed before first reload
+	logger.Step("> Verifying nginx modules and configuration...")
+	if err := testNginxWithAutofix(); err != nil {
+		logger.Warning(fmt.Sprintf("⚠️  Nginx auto-fix failed: %v", err))
+		// We continue anyway, maybe the domain loop will fix it or the final test will catch it
+	}
+
 	if err := ensureErrorPagesExist(nil); err != nil {
 		return err
 	}

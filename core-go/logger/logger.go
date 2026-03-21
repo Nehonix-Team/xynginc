@@ -7,6 +7,11 @@ import (
 	"github.com/fatih/color"
 )
 
+func init() {
+	// Force colors even when running inside a piped Node child_process
+	color.NoColor = false
+}
+
 func processArrowMessage(message string, colorFn func(format string, a ...interface{}) string) string {
 	trimmed := strings.TrimLeft(message, " ")
 	if strings.HasPrefix(trimmed, ">") {

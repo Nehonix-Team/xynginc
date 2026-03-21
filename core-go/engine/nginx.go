@@ -49,7 +49,7 @@ func testNginxWithAutofix() error {
 }
 
 func ReloadNginx() error {
-	cmd := exec.Command("systemctl", "reload", "nginx")
+	cmd := exec.Command("systemctl", "reload-or-restart", "nginx")
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		logger.Success("✓ Nginx reloaded successfully!")

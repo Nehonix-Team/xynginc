@@ -17,8 +17,8 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 - **One-Command SSL**: Integrated Let's Encrypt and Certbot support for automatic HTTPS.
 - **Automatic Nginx Reload**: Applies configuration changes without manual service restarts.
 - **Multi-Domain Support**: Manages multiple domains and subdomains within a single configuration.
-- **Optimized Configuration**: Generates production-ready Nginx configuration files.
-- **High Performance**: Core logic executed via a Rust-based CLI for speed and reliability.
+- **Optimized Configuration**: Generates production-ready Nginx configuration files via dynamic GitHub template fetching.
+- **High Performance**: Core logic executed via a Go-based CLI for speed and reliability.
 - **Type Safety**: Full TypeScript support with comprehensive type definitions.
 
 ## Installation
@@ -26,7 +26,7 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 For detailed installation instructions, please refer to the [Installation Guide](docs/INSTALLATION.md).
 For building from source (custom architectures), see the [Build Guide](docs/BUILD_FROM_SOURCE.md).
 
-XyNginC now natively supports **cross-platform execution** (`Linux`, `macOS / Darwin`, `Windows`) and architectures (`amd64/x64`, `arm64`). While the binary runs anywhere, we strongly recommend deploying your XyPriss instances alongside Nginx on an **Ubuntu VPS** for the best optimal security and stability.
+XyNginC is designed for production environments running on Linux. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
 
 ## Quick Start
 
@@ -141,6 +141,9 @@ interface XyNginCPluginOptions {
 
   /** Specific GitHub release version to download (default: "latest") */
   version?: string;
+
+  /** Password to execute sudo commands silently in background environments like PM2 */
+  sudoPassword?: string;
 }
 ```
 
@@ -224,8 +227,8 @@ sudo xynginc status
 The system operates through a three-tier architecture:
 
 1.  **XyPriss Application**: The Node.js application running the server.
-2.  **XyNginC Plugin**: A TypeScript wrapper that interfaces with the application and manages the binary.
-3.  **XyNginC Binary**: A Rust-based CLI tool that performs system-level operations (Nginx configuration, Certbot execution).
+2.  **XyNginC Plugin**: A TypeScript wrapper that interfaces with the application and executes the underlying Go binary.
+3.  **XyNginC Go Binary**: A high-performance Go-based CLI tool that performs system-level operations (Nginx configuration, Certbot execution). It dynamically fetches the latest config templates from GitHub (`Nehonix-Team/xynginc`) to guarantee up-to-date and optimized Nginx setups.
 
 ## Security Considerations
 
@@ -237,6 +240,7 @@ XyNginC requires elevated privileges to perform the following actions:
 - Reloading the Nginx service
 
 **Note**: Ensure your XyPriss server is started with `sudo` privileges when using this plugin, or configure `sudoers` to allow specific commands for the user.
+Alternatively, if your application runs in the background (e.g. using PM2), you can configure the plugin with the `sudoPassword` option or the `SUDO_PASSWORD` environment variable, to inject the password implicitly without an interactive prompt.
 
 ## Troubleshooting
 
@@ -281,9 +285,9 @@ Contributions are welcome. Please follow the standard pull request process.
 
 1.  Clone the repository
 2.  Install dependencies
-3.  Build the Rust CLI and TypeScript package
+3.  Build the Go CLI and TypeScript package (`xfpm run build:all`)
 4.  Run tests
 
 ## License
 
-MIT
+NOSL
