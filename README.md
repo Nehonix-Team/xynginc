@@ -36,7 +36,7 @@ XyNginC is exclusively designed for **XyPriss projects running in production on 
 
 ### Prerequisites
 
-Before installing XyNginC, you need **XFPM** — the official package manager for the XyPriss ecosystem, built in Go for speed and reliability.
+Before installing XyNginC, you need **XFPM** — the official package manager for the XyPriss ecosystem.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Nehonix-Team/XFPM/master/scripts/install.sh | sudo bash
