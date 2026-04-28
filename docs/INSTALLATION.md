@@ -16,12 +16,15 @@ XyNginC relies on system-level components (Nginx, Certbot, systemd) that are nat
 - **Ecosystem**: XyPriss project (production only)
 - **Platform**: Virtual Private Server (VPS) or Dedicated Server
 - **OS**: Ubuntu 20.04 LTS or newer (Debian 11+, Kali Linux supported)
-- **Architecture**: x86_64 (Standard 64-bit Linux)
+- **Architecture**: x64, arm64, ia32 (Linux only)
 - **Access**: Root or sudo privileges required
 - **Package Manager**: XFPM installed
 
+> [!NOTE]
+> XNCP provides pre-compiled binaries for the following Linux architectures: **x64**, **arm64**, and **ia32**. Other architectures would require manual compilation from source, see the [Build from Source Guide](BUILD_FROM_SOURCE.md).
+
 > [!CAUTION]
-> XNCP provides a pre-compiled binary for standard **Linux x86_64** systems only. Other architectures (like ARM/Raspberry Pi) are not officially supported via the pre-compiled binary and would require manual compilation from source. See the [Build from Source Guide](BUILD_FROM_SOURCE.md). **Windows and macOS are not supported.**
+> **Windows and macOS are not supported.**
 
 ## Step 0: Install XFPM
 
