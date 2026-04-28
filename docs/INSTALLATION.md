@@ -50,9 +50,6 @@ xfpm --version
 xfpm install xynginc
 ```
 
-> [!NOTE]
-> The installation process requires `sudo` privileges to place the binary in `/usr/local/bin` and configure system permissions. You may be prompted for your password during installation.
-
 ### Option 2: Manual Binary Installation
 
 For standalone usage or environments without XFPM, you can install the binary directly using curl.
