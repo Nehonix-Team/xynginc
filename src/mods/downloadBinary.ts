@@ -1,9 +1,10 @@
 import { Logger } from "./logger";
 import * as https from "https";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
 import { BINARY_NAME, BINARY_DIR, GITHUB_REPO } from "./constant";
+import { __strl__ } from "strulink";
+
+const fs = __sys__.fs;
+const path = __sys__.path;
 
 /**
  * Downloads the xynginc binary from GitHub releases.
@@ -12,8 +13,8 @@ import { BINARY_NAME, BINARY_DIR, GITHUB_REPO } from "./constant";
  * @returns The path to the downloaded binary.
  */
 export async function downloadBinary(version: string): Promise<string> {
-  const platform = os.platform();
-  const arch = os.arch();
+  const platform = __sys__.os.platform();
+  const arch = __sys__.os.arch();
 
   if (platform !== "linux") {
     throw new Error(
@@ -27,12 +28,12 @@ export async function downloadBinary(version: string): Promise<string> {
       ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
       : `https://github.com/${GITHUB_REPO}/releases/download/${version}/${binaryName}`;
 
-  Logger.info(`[XyNginC] Downloading from: ${downloadUrl}`);
+  Logger.info(
+    `[XyNginC] Downloading from: ${__strl__.createUrl(downloadUrl).hostname}`,
+  );
 
   // Create bin directory
-  if (!fs.existsSync(BINARY_DIR)) {
-    fs.mkdirSync(BINARY_DIR, { recursive: true });
-  }
+  fs.writeIfNotExistsSync(BINARY_DIR, { recursive: true });
 
   const localPath = path.join(BINARY_DIR, BINARY_NAME);
 
@@ -44,7 +45,7 @@ export async function downloadBinary(version: string): Promise<string> {
             response.statusCode &&
             response.statusCode >= 300 &&
             response.statusCode < 400 &&
-            response.headers.location
+            response.headers.location 
           ) {
             download(response.headers.location);
             return;
@@ -62,14 +63,14 @@ export async function downloadBinary(version: string): Promise<string> {
           const file = fs.createWriteStream(localPath);
           response.pipe(file);
           file.on("finish", () => {
-            file.close();
-            fs.chmodSync(localPath, 0o755); // Make executable
+            file.close(); //
+            fs.chmod(localPath, "755"); // Make executable (octal version: 0o755)
             Logger.success("[XyNginC] ✓ Binary downloaded successfully");
             resolve(localPath);
           });
         })
         .on("error", (err) => {
-          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+          fs.rmIfExists(localPath);
           reject(err);
         });
     }

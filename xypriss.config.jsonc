@@ -1,0 +1,9 @@
+{
+  "$internal": {
+    // $(pkg).name dynamically reads the "name" field from your package.json.
+    // This avoids duplicating the plugin name and keeps the config in sync.
+    "$(pkg).name": {
+      "type": "plugin",
+    },
+  },
+}

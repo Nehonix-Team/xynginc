@@ -16,7 +16,7 @@ import { XyNginCDomainConfig } from "./types";
 
 const getSudo = (sudoPassword: string) => {
   // Attempt multiple ways to get the password, including XyPriss internal env if somehow exposed
-  const envPwd = process.env.SUDO_PASSWORD;
+  const envPwd = __sys__.__env__.get("SUDO_PASSWORD");
   // || (global as any).__sys__?.$env?.("SUDO_PASSWORD");
   const pwd = sudoPassword || envPwd;
 
@@ -68,11 +68,25 @@ export async function startXNCPlugin(
     sudoPassword,
   } = options;
   Logger.info("[XyNginC] Initializing Nginx Controller...");
+  if (!sudoPassword) {
+    Logger.warn(
+      "[XyNginC] To ensure optimal performance and prevent potential issues, it is recommended to provide your system sudo password.",
+    );
+    Logger.info(
+      "[XyNginC] Security notice: The password is used solely for privileged communication with your operating system. It is never stored, logged, or transmitted externally.",
+    );
+  }
 
   try {
     // 1. Ensure binary exists
     const binary = await ensureBinary(binaryPath, autoDownload, version);
     Logger.success(`[XyNginC] ✓ Binary located: ${binary}`);
+
+    __sys__.vars.update({
+      xynginc: {
+        binary,
+      },
+    });
 
     // 2. Check system requirements
     Logger.info("[XyNginC] Checking system requirements...");
@@ -112,7 +126,7 @@ export async function startXNCPlugin(
     Logger.success("[XyNginC] Configuration applied successfully!");
 
     // Expose CLI helper methods on server
-    (server as any).xynginc = {
+    const sUtil = {
       addDomain: (
         domain: string,
         port: number,
@@ -138,6 +152,8 @@ export async function startXNCPlugin(
       installRequirements: () =>
         installRequirementsHandler(binary, getSudo(sudoPassword)),
     };
+    (server as any).app.xynginc = sUtil;
+    (server as any).xynginc = sUtil;
 
     Logger.info("[XyNginC] Server methods available: server.xynginc.*");
   } catch (error) {

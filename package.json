@@ -1,6 +1,6 @@
 {
   "name": "xynginc",
-  "version": "1.0.83",
+  "version": "1.0.89",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "author": "Seth Eleazar - iDevo",
   "license": "NOSL",
@@ -10,7 +10,8 @@
     "dist",
     "scripts",
     "README.md",
-    "xypriss.plugin.xsig"
+    "xypriss.plugin.xsig",
+    "xypriss.config.jsonc"
   ],
   "bin": {
     "xynginc": "./bin/xynginc"
@@ -42,8 +43,12 @@
     "prepublishOnly": "xfpm run build && xfpm sign ./ --min-version 1.0.81 --fix"
   },
   "dependencies": {
-    "xypriss": "^9.9.4",
+    "reliant-type": "^2.1.5",
+    "strulink": "^1.2.0",
     "xypriss-security": "^2.1.16"
+  },
+  "peerDependencies": {
+    "xypriss": ">=9.9.7"
   },
   "devDependencies": {
     "@types/node": "^20.19.37",
@@ -51,7 +56,9 @@
   },
   "xfpm": {
     "permissions": [
-      "XHS.HOOK.HTTP.REQUEST",
+      "XHS.HOOK.LIFECYCLE.REGISTER",
+      "XHS.HOOK.LIFECYCLE.SERVER_START",
+      "XHS.HOOK.LIFECYCLE.SERVER_STOP",
       "XHS.HOOK.LIFECYCLE.SERVER_READY"
     ]
   }

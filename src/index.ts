@@ -52,7 +52,6 @@ export default function XNCP(options: XyNginCPluginOptions) {
         Logger.info("[XyNginC] Registering plugin...");
         validateConfig({ domains, autoReload, autoFixFirewall });
       },
-
       onServerStart: async (_server: PluginServer) => {
         // Validate config
         await startXNCPlugin(_server, {

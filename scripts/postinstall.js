@@ -90,6 +90,7 @@ async function run() {
     console.log(
       "✅ [XyNginC] Latest release downloaded and installed successfully in local bin/ folder!",
     );
+    process.exit();
   } catch (error) {
     console.error("❌ [XyNginC] Installation failed during download!");
     console.error(`   Error: ${error.message}`);

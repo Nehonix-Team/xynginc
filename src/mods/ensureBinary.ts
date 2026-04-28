@@ -1,9 +1,11 @@
-import fs from "fs"
-import path from "path"
 import { Logger } from "./logger"
 import { execAsync } from "./execAsync";
 import { BINARY_DIR, BINARY_NAME } from "./constant";
 import { downloadBinary } from "./downloadBinary";
+
+const fs = __sys__.fs;
+const path = __sys__.path;
+
 
 /**
  * Ensures the xynginc binary exists.
@@ -21,7 +23,7 @@ export async function ensureBinary(
   version: string,
 ): Promise<string> {
   // 1. Try custom path
-  if (customPath && fs.existsSync(customPath)) {
+  if (customPath && fs.exists(customPath)) {
     return customPath;
   }
 
@@ -29,7 +31,7 @@ export async function ensureBinary(
   try {
     const { stdout } = await execAsync("which xynginc");
     const globalPath = stdout.trim();
-    if (globalPath && fs.existsSync(globalPath)) {
+    if (globalPath && fs.exists(globalPath)) {
       return globalPath;
     }
   } catch {
@@ -38,7 +40,7 @@ export async function ensureBinary(
 
   // 3. Try local bin directory
   const localPath = path.join(BINARY_DIR, BINARY_NAME);
-  if (fs.existsSync(localPath)) {
+  if (fs.exists(localPath)) {
     return localPath;
   }
 
