@@ -31,7 +31,7 @@ XyNginC relies on system-level components (Nginx, Certbot, systemd) that are nat
 Before installing XyNginC, make sure XFPM is installed on your system. XFPM is the package manager of the XyPriss ecosystem and is required for the recommended installation method.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Nehonix-Team/XFPM/master/scripts/install.sh | sudo bash
+curl -sL https://xypriss.nehonix.com/install.js | node
 ```
 
 Verify the installation:
