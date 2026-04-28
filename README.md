@@ -4,12 +4,18 @@ This project uses code developed by NEHONIX (www.nehonix.com) under the NEHONIX 
 
 XyPriss Nginx Controller - Simplifie la gestion de Nginx et SSL.
 
-[![npm version](https://badge.fury.io/js/%40xypriss%2Fxynginc.svg)](https://www.npmjs.com/package/xynginc)
+[![xfpm version](https://badge.fury.io/js/%40xypriss%2Fxynginc.svg)](https://www.npmjs.com/package/xynginc)
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
 
 ## Overview
 
 XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, SSL certificate management, and provides optimized, production-ready configs for security, performance, and best practices. It eliminates manual Nginx editing, simplifying XyPriss deployment to just a few lines of TypeScript. Check out the [demo project on GitHub](https://github.com/iDevo-ll/XYNC-Demo).
+
+> [!IMPORTANT]
+> XyNginC is a plugin **exclusively designed for XyPriss projects**. It is not intended for use outside the XyPriss ecosystem, in development environments, or on non-Linux systems. For the best integration experience, **XFPM** (XyPriss Fast Package Manager) is required — see [Installation](#installation).
+
+> [!CAUTION]
+> XyNginC only runs on **Linux x86_64 production servers** (VPS or Dedicated). Windows and macOS are not supported.
 
 ## Key Features
 
@@ -26,7 +32,28 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 For detailed installation instructions, please refer to the [Installation Guide](docs/INSTALLATION.md).
 For building from source (custom architectures), see the [Build Guide](docs/BUILD_FROM_SOURCE.md).
 
-XyNginC is designed for production environments running on Linux. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
+XyNginC is exclusively designed for **XyPriss projects running in production on Linux**. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
+
+### Prerequisites
+
+Before installing XyNginC, you need **XFPM** — the official package manager for the XyPriss ecosystem, built in Go for speed and reliability.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nehonix-Team/XFPM/master/scripts/install.sh | sudo bash
+```
+
+```bash
+xfpm --version
+```
+
+### Install XyNginC
+
+```bash
+xfpm install xynginc
+```
+
+> [!NOTE]
+> The installation requires `sudo` privileges to place the binary in `/usr/local/bin` and configure system permissions.
 
 ## Quick Start
 
@@ -181,7 +208,7 @@ await server.xynginc.status(): Promise<string>
 
 ## CLI Usage
 
-The `xynginc` command-line interface allows for direct management without the Node.js application context.
+The `xynginc` command-line interface allows for direct management without the XyPriss application context.
 
 ```bash
 # Check prerequisites
@@ -230,9 +257,9 @@ sudo xynginc status
 
 The system operates through a three-tier architecture:
 
-1.  **XyPriss Application**: The Node.js application running the server.
-2.  **XyNginC Plugin**: A TypeScript wrapper that interfaces with the application and executes the underlying Go binary.
-3.  **XyNginC Go Binary**: A high-performance Go-based CLI tool that performs system-level operations (Nginx configuration, Certbot execution). It dynamically fetches the latest config templates from GitHub (`Nehonix-Team/xynginc`) to guarantee up-to-date and optimized Nginx setups.
+1. **XyPriss Application**: The XyPriss application running the server.
+2. **XyNginC Plugin**: A TypeScript wrapper that interfaces with the application and executes the underlying Go binary.
+3. **XyNginC Go Binary**: A high-performance Go-based CLI tool that performs system-level operations (Nginx configuration, Certbot execution). It dynamically fetches the latest config templates from GitHub (`Nehonix-Team/xynginc`) to guarantee up-to-date and optimized Nginx setups.
 
 ## Security Considerations
 
@@ -243,7 +270,8 @@ XyNginC requires elevated privileges to perform the following actions:
 - Executing `certbot` for SSL certificate generation
 - Reloading the Nginx service
 
-**Security Note**: XyNginC requires elevated privileges to manage Nginx and Firewall rules.
+> [!WARNING]
+> XyNginC requires elevated privileges to manage Nginx and firewall rules. Always review the commands being executed and restrict sudo access to only what is necessary.
 
 - **Sudoers**: We recommend configuring `sudoers` to allow specific commands for the user.
 - **Sudo Password**: If your application runs in the background (e.g. using PM2), you can use the `sudoPassword` option or the `SUDO_PASSWORD` environment variable.
@@ -257,8 +285,8 @@ XyNginC requires elevated privileges to perform the following actions:
 If the binary fails to download automatically:
 
 ```bash
-# Manually trigger postinstall
-npm run postinstall
+# Manually trigger with XFPM
+xfpm run postinstall
 
 # Or specify the path manually in options
 XNCP({
@@ -280,21 +308,25 @@ sudo node server.js
 
 If SSL generation fails:
 
-1.  Verify DNS propagation: `dig api.example.com`
-2.  Ensure firewall allows traffic on ports 80 and 443:
-    ```bash
-    sudo ufw allow 80
-    sudo ufw allow 443
-    ```
+1. Verify DNS propagation: `dig api.example.com`
+2. Ensure firewall allows traffic on ports 80 and 443:
+
+```bash
+sudo ufw allow 80
+sudo ufw allow 443
+```
+
+> [!NOTE]
+> Certbot requires ports 80 and 443 to be publicly accessible for domain validation. Make sure your cloud provider's security groups also allow this traffic, not just UFW.
 
 ## Contributing
 
 Contributions are welcome. Please follow the standard pull request process.
 
-1.  Clone the repository
-2.  Install dependencies
-3.  Build the Go CLI and TypeScript package (`xfpm run build:all`)
-4.  Run tests
+1. Clone the repository
+2. Install dependencies
+3. Build the Go CLI and TypeScript package (`xfpm run build:all`)
+4. Run tests
 
 ## License
 

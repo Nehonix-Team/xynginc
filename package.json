@@ -1,21 +1,26 @@
 {
   "name": "xynginc",
-  "version": "1.0.81",
+  "version": "1.0.82",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
+  "author": "Seth Eleazar - iDevo",
+  "license": "NOSL",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "scripts",
+    "README.md",
+    "xypriss.plugin.xsig"
+  ],
   "bin": {
     "xynginc": "./bin/xynginc"
   },
-  "scripts": {
-    "build": "tsc && xfpm run build:multi",
-    "build:go": "cd core-go && go build -o xynginc && cp xynginc ../bin/",
-    "build:all": "xfpm run build:go && xfpm run build",
-    "build:multi": "bash scripts/build.sh",
-    "dev": "tsc --watch",
-    "prepublishOnly": "xfpm run build",
-    "postinstall": "node scripts/postinstall.js",
-    "install:manual": "sudo bash scripts/install.sh"
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nehonix-Team/xynginc.git"
   },
   "keywords": [
     "xypriss",
@@ -26,33 +31,28 @@
     "letsencrypt",
     "plugin"
   ],
-  "author": "Seth Eleazar - iDevo",
-  "license": "NOSL",
+  "scripts": {
+    "build": "tsc && xfpm run build:multi",
+    "build:all": "xfpm run build:go && xfpm run build",
+    "build:go": "cd core-go && go build -o xynginc && cp xynginc ../bin/",
+    "build:multi": "bash scripts/build.sh",
+    "dev": "tsc --watch",
+    "install:manual": "sudo bash scripts/install.sh",
+    "postinstall": "node scripts/postinstall.js",
+    "prepublishOnly": "xfpm run build && xfpm sign ./ --min-version 1.0.81 --fix"
+  },
+  "dependencies": {
+    "xypriss": "^9.9.4",
+    "xypriss-security": "^2.1.16"
+  },
   "devDependencies": {
     "@types/node": "^20.19.37",
     "typescript": "^5.9.3"
   },
-  "files": [
-    "dist",
-    "bin",
-    "scripts",
-    "README.md"
-  ],
-  "os": [
-    "linux"
-  ],
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Nehonix-Team/xynginc.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Nehonix-Team/xynginc.git/issues"
-  },
-  "dependencies": {
-    "xypriss": "^9.3.71",
-    "xypriss-security": "^2.1.10"
+  "xfpm": {
+    "permissions": [
+      "XHS.HOOK.HTTP.REQUEST",
+      "XHS.HOOK.LIFECYCLE.SERVER_READY"
+    ]
   }
 }

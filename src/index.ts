@@ -33,34 +33,43 @@ export default function XNCP(options: XyNginCPluginOptions) {
     sudoPassword,
   } = options;
 
-  return Plugin.create({
-    name: "xynginc",
-    version: "1.0.81",
-    description: "XyPriss Nginx Controller - Automatic Nginx & SSL management",
+  const meta = Plugin.manifest<{
+    name: string;
+    version: string;
+    description: string;
+  }>(__sys__);
 
-    onRegister: async (server) => {
-      Logger.info("[XyNginC] Registering plugin...");
-      validateConfig({ domains, autoReload, autoFixFirewall });
-    },
+  return Plugin.create(
+    {
+      name: meta.name,
+      version: meta.version,
+      description: meta.description,
 
-    onServerStart: async (_server) => {
-      // Validate config
-      await startXNCPlugin(_server, {
-        autoDownload,
-        autoReload,
-        autoFixFirewall,
-        binaryPath: binaryPath,
-        version,
-        domains,
-        installRequirements,
-        sudoPassword: sudoPassword || "",
-      });
-    },
+      onRegister: async (_server) => {
+        Logger.info("[XyNginC] Registering plugin...");
+        validateConfig({ domains, autoReload, autoFixFirewall });
+      },
 
-    onServerStop: async () => {
-      Logger.info("[XyNginC] Shutting down Nginx Controller...");
+      onServerStart: async (_server) => {
+        // Validate config
+        await startXNCPlugin(_server, {
+          autoDownload,
+          autoReload,
+          autoFixFirewall,
+          binaryPath: binaryPath,
+          version,
+          domains,
+          installRequirements,
+          sudoPassword: sudoPassword || "",
+        });
+      },
+
+      onServerStop: async () => {
+        Logger.info("[XyNginC] Shutting down Nginx Controller...");
+      },
     },
-  });
+    __sys__.__root__,
+  );
 }
 
 // Re-export types

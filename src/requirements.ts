@@ -60,7 +60,7 @@ export async function applyConfig(
     auto_reload: boolean;
     auto_fix_firewall: boolean;
   },
-  sudoCmd: string,
+  sudoCmd: string, 
 ): Promise<void> {
   // Map camelCase to snake_case for Go core
   const mappedConfig = {
