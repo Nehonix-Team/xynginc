@@ -119,7 +119,7 @@ XNCP({
 Manage domains programmatically at runtime:
 
 ```typescript
-app.start(undefined, async () => {
+app.start(async () => {
   // Add a new domain
   await app.xynginc.addDomain(
     "new.example.com",

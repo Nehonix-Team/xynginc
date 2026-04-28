@@ -1,6 +1,6 @@
 import { Logger } from "./logger";
 import { spawn } from "child_process";
-import { XyNginCDomainConfig } from "./types";
+import { XyNginCDomainConfig } from "../types";
 import { execAsync } from "./execAsync";
 import { XStringify } from "xypriss-security";
 
@@ -60,7 +60,7 @@ export async function applyConfig(
     auto_reload: boolean;
     auto_fix_firewall: boolean;
   },
-  sudoCmd: string, 
+  sudoCmd: string,
 ): Promise<void> {
   // Map camelCase to snake_case for Go core
   const mappedConfig = {

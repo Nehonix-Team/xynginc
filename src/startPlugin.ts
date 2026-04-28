@@ -1,5 +1,6 @@
-import { ensureBinary } from "./ensureBinary";
-import { Logger } from "./logger";
+import { PluginServer } from ".";
+import { ensureBinary } from "./mods/ensureBinary";
+import { Logger } from "./mods/logger";
 import {
   addDomain,
   applyConfig,
@@ -10,7 +11,7 @@ import {
   reloadNginx,
   removeDomain,
   testNginx,
-} from "./requirements";
+} from "./mods/requirements";
 import { XyNginCDomainConfig } from "./types";
 
 const getSudo = (sudoPassword: string) => {
@@ -44,7 +45,7 @@ const getSudo = (sudoPassword: string) => {
 };
 
 export async function startXNCPlugin(
-  server: any,
+  server: PluginServer,
   options: {
     binaryPath?: string;
     autoDownload: boolean;
@@ -111,7 +112,7 @@ export async function startXNCPlugin(
     Logger.success("[XyNginC] Configuration applied successfully!");
 
     // Expose CLI helper methods on server
-    server.xynginc = {
+    (server as any).xynginc = {
       addDomain: (
         domain: string,
         port: number,

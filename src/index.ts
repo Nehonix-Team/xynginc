@@ -5,14 +5,17 @@
  */
 
 import { Plugin } from "xypriss";
-import { Logger } from "./logger";
+import { Logger } from "./mods/logger";
 import {
   XyNginCConfig,
   XyNginCDomainConfig,
   XyNginCPluginOptions,
 } from "./types";
-import { validateConfig } from "./validateConfig";
+import { validateConfig } from "./mods/validateConfig";
 import { startXNCPlugin } from "./startPlugin";
+
+export type PlC = Parameters<typeof Plugin.create>[0];
+export type PluginServer = Parameters<NonNullable<PlC["onServerStart"]>>[0];
 
 /**
  * XyNginC Plugin for XyPriss.
@@ -33,7 +36,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
     sudoPassword,
   } = options;
 
-  const meta = Plugin.manifest<{
+  const pkg = Plugin.manifest<{
     name: string;
     version: string;
     description: string;
@@ -41,16 +44,16 @@ export default function XNCP(options: XyNginCPluginOptions) {
 
   return Plugin.create(
     {
-      name: meta.name,
-      version: meta.version,
-      description: meta.description,
+      name: pkg.name,
+      version: pkg.version,
+      description: pkg.description,
 
       onRegister: async (_server) => {
         Logger.info("[XyNginC] Registering plugin...");
         validateConfig({ domains, autoReload, autoFixFirewall });
       },
 
-      onServerStart: async (_server) => {
+      onServerStart: async (_server: PluginServer) => {
         // Validate config
         await startXNCPlugin(_server, {
           autoDownload,

@@ -1,4 +1,4 @@
-import { XyNginCConfig } from "./types";
+import { XyNginCConfig } from "../types";
 
 /**
  * Validates the plugin configuration.

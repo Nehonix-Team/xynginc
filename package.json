@@ -1,6 +1,6 @@
 {
   "name": "xynginc",
-  "version": "1.0.82",
+  "version": "1.0.83",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "author": "Seth Eleazar - iDevo",
   "license": "NOSL",
