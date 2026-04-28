@@ -15,7 +15,7 @@ XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, 
 > XyNginC is a plugin **exclusively designed for XyPriss projects**. It is not intended for use outside the XyPriss ecosystem, in development environments, or on non-Linux systems. For the best integration experience, **XFPM** (XyPriss Fast Package Manager) is required — see [Installation](#installation).
 
 > [!CAUTION]
-> XyNginC only runs on **Linux x86_64 production servers** (VPS or Dedicated). Windows and macOS are not supported.
+> XyNginC only runs on **Linux production servers** (VPS or Dedicated). Supported architectures: **x64**, **arm64**, and **ia32**. Windows and macOS are not supported.
 
 ## Key Features
 
