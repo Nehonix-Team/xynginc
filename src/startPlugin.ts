@@ -61,6 +61,9 @@ const getSudo = (sudoPassword: string) => {
   return "sudo -n";
 };
 
+let appliedConfigKey: string | null = null;
+let activeInitPromise: Promise<void> | null = null;
+
 export async function startXNCPlugin(
   server: PluginServer,
   options: {
@@ -105,42 +108,59 @@ export async function startXNCPlugin(
       },
     });
 
-    // 2. Check system requirements
-    Logger.info("[XyNginC] Checking system requirements...");
+    const configKey = JSON.stringify({
+      domains,
+      autoReload,
+      autoFixFirewall,
+    });
 
-    // Check if requirements are satisfied
-    const requirementsOk = await checkRequirements(
-      binary,
-      getSudo(sudoPassword),
-    );
+    if (appliedConfigKey !== configKey) {
+      if (!activeInitPromise) {
+        activeInitPromise = (async () => {
+          // 2. Check system requirements
+          Logger.info("[XyNginC] Checking system requirements...");
+          const requirementsOk = await checkRequirements(
+            binary,
+            getSudo(sudoPassword),
+          );
 
-    // Install requirements if enabled and needed
-    if (!requirementsOk && installRequirements) {
-      Logger.info(
-        "[XyNginC] Requirements missing, installing automatically...",
-      );
-      await installRequirementsHandler(binary, getSudo(sudoPassword));
-      Logger.info("[XyNginC] Requirements installed, re-checking...");
-      await checkRequirements(binary, getSudo(sudoPassword));
-    } else if (!requirementsOk) {
-      throw new Error(
-        "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",
-      );
+          if (!requirementsOk && installRequirements) {
+            Logger.info(
+              "[XyNginC] Requirements missing, installing automatically...",
+            );
+            await installRequirementsHandler(binary, getSudo(sudoPassword));
+            Logger.info("[XyNginC] Requirements installed, re-checking...");
+            await checkRequirements(binary, getSudo(sudoPassword));
+          } else if (!requirementsOk) {
+            throw new Error(
+              "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",
+            );
+          }
+
+          // 3. Apply configuration
+          Logger.info("[XyNginC] Applying configuration...");
+          await applyConfig(
+            binary,
+            {
+              domains,
+              auto_reload: autoReload,
+              auto_fix_firewall: autoFixFirewall,
+            },
+            getSudo(sudoPassword),
+          );
+
+          appliedConfigKey = configKey;
+          Logger.success("[XyNginC] Configuration applied successfully!");
+        })();
+      }
+      try {
+        await activeInitPromise;
+      } finally {
+        activeInitPromise = null;
+      }
+    } else {
+      Logger.info("[XyNginC] Configuration already applied for this multi-server group.");
     }
-
-    // 3. Apply configuration
-    Logger.info("[XyNginC] Applying configuration...");
-    await applyConfig(
-      binary,
-      {
-        domains,
-        auto_reload: autoReload,
-        auto_fix_firewall: autoFixFirewall,
-      },
-      getSudo(sudoPassword),
-    );
-
-    Logger.success("[XyNginC] Configuration applied successfully!");
 
     // Expose CLI helper methods on server
     const sUtil = {

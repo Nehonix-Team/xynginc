@@ -46,6 +46,9 @@ export async function installRequirementsHandler(
   });
 }
 
+const fs = __sys__.fs;
+const path = __sys__.path;
+
 /**
  * Applies the configuration using the xynginc binary.
  *
@@ -71,8 +74,8 @@ export async function applyConfig(
       port: d.port,
       ssl: d.ssl,
       email: d.email,
-      host: d.host,
-      max_body_size: d.maxBodySize,
+      host: d.host || "127.0.0.1",
+      max_body_size: d.maxBodySize || "10M",
     })),
   };
 
@@ -84,6 +87,13 @@ export async function applyConfig(
     reportCircularPath: true,
   });
 
+  const tmpDir = typeof fs.tempDir === "function" ? fs.tempDir() : "/tmp";
+  const tempConfigFile = path.join(
+    tmpDir,
+    `.xynginc-config-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.json`,
+  );
+  fs.writeFileSync(tempConfigFile, configJson);
+
   try {
     // Test nginx BEFORE applying new config
     Logger.info("[XyNginC] Testing current nginx config...");
@@ -94,31 +104,20 @@ export async function applyConfig(
       );
     }
 
-    // Pass config via stdin to avoid shell escaping issues
-    // If using sudo -S, we must pass both the password and the JSON in the same pipe
-    if (sudoCmd.includes("-S")) {
-      const pwdMatch = sudoCmd.match(/echo '(.*)' \| sudo -S/);
-      if (pwdMatch) {
-        const pwd = pwdMatch[1];
-        await execStream(
-          `(echo '${pwd}'; echo '${configJson}') | sudo -S ${binaryPath} apply --config -`,
-        );
-      } else {
-        await execStream(
-          `echo '${configJson}' | ${sudoCmd} ${binaryPath} apply --config -`,
-        );
-      }
-    } else {
-      await execStream(
-        `echo '${configJson}' | ${sudoCmd} ${binaryPath} apply --config -`,
-      );
-    }
+    // Apply configuration using the temporary file to avoid stdin collision with sudo
+    await execStream(
+      `${sudoCmd} ${binaryPath} apply --config ${tempConfigFile}`,
+    );
   } catch (error: any) {
     // If it fails, show more helpful error
     Logger.error(`[XyNginC] Failed to apply configuration: ${error.message}`);
     Logger.info("[XyNginC] Try running: sudo nginx -t");
     Logger.info("[XyNginC] Check: /etc/nginx/sites-enabled/");
     throw new Error(`Failed to apply configuration: ${error.message}`);
+  } finally {
+    try {
+      fs.rmIfExists(tempConfigFile);
+    } catch {}
   }
 }
 

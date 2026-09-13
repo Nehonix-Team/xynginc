@@ -27,32 +27,57 @@ if (!fs.existsSync(binDir)) {
   fs.mkdirSync(binDir, { recursive: true });
 }
 
-function download(url, dest) {
+function download(url, dest, redirectCount = 0) {
   return new Promise((resolve, reject) => {
+    if (redirectCount > 5) {
+      reject(new Error("Too many redirects while downloading binary"));
+      return;
+    }
+
     https
-      .get(url, (response) => {
-        if (
-          response.statusCode >= 300 &&
-          response.statusCode < 400 &&
-          response.headers.location
-        ) {
-          // Recurse for redirects
-          download(response.headers.location, dest).then(resolve).catch(reject);
-          return;
-        }
+      .get(
+        url,
+        {
+          headers: {
+            "User-Agent": "xynginc",
+            Accept: "*/*",
+          },
+        },
+        (response) => {
+          if (
+            response.statusCode >= 300 &&
+            response.statusCode < 400 &&
+            response.headers.location
+          ) {
+            response.resume();
+            download(response.headers.location, dest, redirectCount + 1)
+              .then(resolve)
+              .catch(reject);
+            return;
+          }
 
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
-          return;
-        }
+          if (response.statusCode !== 200) {
+            response.resume();
+            reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
+            return;
+          }
 
-        const file = fs.createWriteStream(dest);
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-      })
+          const file = fs.createWriteStream(dest);
+          file.on("error", (err) => {
+            fs.unlink(dest, () => {});
+            reject(err);
+          });
+          response.on("error", (err) => {
+            fs.unlink(dest, () => {});
+            reject(err);
+          });
+          response.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            resolve();
+          });
+        },
+      )
       .on("error", (err) => {
         fs.unlink(dest, () => {});
         reject(err);

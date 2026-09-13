@@ -48,7 +48,7 @@
     "xypriss-security": "^2.1.16"
   },
   "peerDependencies": {
-    "xypriss": ">=9.9.7"
+    "xypriss": ">=9.12.69"
   },
   "devDependencies": {
     "@types/node": "^20.19.37",

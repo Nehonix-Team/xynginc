@@ -38,13 +38,28 @@ export async function ensureBinary(
     // Not in PATH
   }
 
-  // 3. Try local bin directory
+  // 3. Try local bin directory (<package_root>/bin/xynginc)
   const localPath = path.join(BINARY_DIR, BINARY_NAME);
   if (fs.exists(localPath)) {
+    try {
+      fs.chmod(localPath, 0o755);
+    } catch {}
     return localPath;
   }
 
-  // 4. Auto-download if enabled
+  // 4. Try user home cache (~/.xynginc/bin/xynginc)
+  const home = __sys__.os.homeDir
+    ? __sys__.os.homeDir()
+    : (typeof process !== "undefined" && process.env.HOME) || "/tmp";
+  const userPath = path.join(home, ".xynginc", "bin", BINARY_NAME);
+  if (fs.exists(userPath)) {
+    try {
+      fs.chmod(userPath, 0o755);
+    } catch {}
+    return userPath;
+  }
+
+  // 5. Auto-download if enabled
   if (autoDownload) {
     Logger.info("[XyNginC] Binary not found, downloading...");
     return await downloadBinary(version);
