@@ -130,7 +130,15 @@ export async function startXNCPlugin(
             );
             await installRequirementsHandler(binary, getSudo(sudoPassword));
             Logger.info("[XyNginC] Requirements installed, re-checking...");
-            await checkRequirements(binary, getSudo(sudoPassword));
+            const recheckOk = await checkRequirements(
+              binary,
+              getSudo(sudoPassword),
+            );
+            if (!recheckOk) {
+              throw new Error(
+                "[XyNginC] System requirements installation failed or was incomplete. Please run 'sudo xynginc install' manually.",
+              );
+            }
           } else if (!requirementsOk) {
             throw new Error(
               "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",

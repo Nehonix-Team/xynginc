@@ -19,9 +19,10 @@ export async function installRequirementsHandler(
     Logger.info("[XyNginC] Please respond to any prompts in the terminal.");
 
     // Handle process environmental logic if running via non-interactive sudo -S
+    const envPrefix = "env XYNC_INSTALL_MODE=non-interactive DEBIAN_FRONTEND=noninteractive";
     const cmd = sudoCmd.includes("-S")
-      ? `${sudoCmd} ${binaryPath} install`
-      : `sudo ${binaryPath} install`;
+      ? `${sudoCmd} ${envPrefix} ${binaryPath} install`
+      : `sudo ${envPrefix} ${binaryPath} install`;
 
     // Spawn the process with inherited stdio for full interactivity
     const installProcess = spawn(cmd, {
@@ -268,7 +269,7 @@ export async function checkRequirements(
   try {
     Logger.info("[XyNginC] Checking system requirements...");
     const cmd = `${sudoCmd} ${binaryPath} check`;
-    Logger.info(`[XyNginC] Running: ${cmd}`);
+    // Logger.info(`[XyNginC] Running: ${__sys__.utils.str.of(cmd).between("ech")}`);
     await execStream(cmd);
     Logger.info("[XyNginC] System requirements checked successfully!");
     return true;
