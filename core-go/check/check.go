@@ -61,6 +61,26 @@ func CheckRequirements() error {
 		logger.Info(fmt.Sprintf("it will be created: %s", constants.BackupDir))
 	}
 
+	// Check headers-more module
+	fmt.Print("   headers-more module:   ")
+	modulePaths := []string{
+		"/usr/share/nginx/modules/ngx_http_headers_more_filter_module.so",
+		"/usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so",
+	}
+	hasHeadersMore := false
+	for _, p := range modulePaths {
+		if _, err := os.Stat(p); err == nil {
+			hasHeadersMore = true
+			break
+		}
+	}
+	if hasHeadersMore {
+		logger.Success("✓ Installed")
+	} else {
+		logger.Error("❌ Not installed")
+		allOk = false
+	}
+
 	if allOk {
 		logger.Success("\n✅ All requirements met!")
 		return nil

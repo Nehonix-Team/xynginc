@@ -98,6 +98,13 @@ func ensureNginxMainConfigExists() error {
 		return err
 	}
 
+	// Avoid duplicate load_module or crash if module not found
+	if _, err := os.Stat("/etc/nginx/modules-enabled/50-mod-http-headers-more-filter.conf"); err == nil {
+		mainConfig = strings.Replace(mainConfig, "load_module modules/ngx_http_headers_more_filter_module.so;", "# load_module modules/ngx_http_headers_more_filter_module.so; # already loaded via modules-enabled", 1)
+	} else if _, err := os.Stat("/usr/share/nginx/modules/ngx_http_headers_more_filter_module.so"); os.IsNotExist(err) {
+		mainConfig = strings.Replace(mainConfig, "load_module modules/ngx_http_headers_more_filter_module.so;", "# load_module modules/ngx_http_headers_more_filter_module.so; # module not installed", 1)
+	}
+
 	if err := os.WriteFile(nginxConfPath, []byte(mainConfig), 0644); err != nil {
 		return fmt.Errorf("failed to write main nginx config: %v", err)
 	}

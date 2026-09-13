@@ -79,9 +79,25 @@ func checkMissingRequirements() (*SystemRequirements, error) {
 		fmt.Printf("ℹ>  Will be created: %s\n", constants.BackupDir)
 	}
 
-	// This assumes engine.CheckHeadersMoreModule is public if I move it to engine, wait, it's not exported.
-	// Oh, I didn't export it in engine. Let me use a workaround or export it later if needed. For now assume true if installed.
-	reqs.HeadersMoreModule = true
+	fmt.Print("   headers-more module:   ")
+	modulePaths := []string{
+		"/usr/share/nginx/modules/ngx_http_headers_more_filter_module.so",
+		"/usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so",
+	}
+	moduleFound := false
+	for _, p := range modulePaths {
+		if _, err := os.Stat(p); err == nil {
+			moduleFound = true
+			break
+		}
+	}
+	if moduleFound {
+		fmt.Println("✓ Installed")
+		reqs.HeadersMoreModule = true
+	} else {
+		fmt.Println("❌ Not installed")
+		reqs.HeadersMoreModule = false
+	}
 
 	return reqs, nil
 }
@@ -203,6 +219,10 @@ func installMissingRequirements(reqs *SystemRequirements) error {
 	if !reqs.Certbot {
 		fmt.Println("> Adding certbot installation...")
 		packages = append(packages, "certbot", "python3-certbot-nginx")
+	}
+	if !reqs.HeadersMoreModule {
+		fmt.Println("> Adding headers-more module installation...")
+		packages = append(packages, "libnginx-mod-http-headers-more-filter")
 	}
 
 	if !reqs.SitesAvailableDir {
@@ -367,7 +387,7 @@ func InteractiveInstall() error {
 
 	fmt.Println("\n> Final verification...")
 	finalCheck, _ := checkMissingRequirements()
-	allSatisfied := finalCheck.Nginx && finalCheck.Certbot && finalCheck.SitesAvailableDir && finalCheck.SitesEnabledDir
+	allSatisfied := finalCheck.Nginx && finalCheck.Certbot && finalCheck.SitesAvailableDir && finalCheck.SitesEnabledDir && finalCheck.HeadersMoreModule
 
 	if allSatisfied {
 		fmt.Println("\n🎉 Installation completed successfully!")
