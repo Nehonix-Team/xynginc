@@ -15,26 +15,43 @@ import {
 import { XyNginCDomainConfig } from "./types";
 
 const getSudo = (sudoPassword: string) => {
-  // Attempt multiple ways to get the password, including XyPriss internal env if somehow exposed
-  const envPwd = __sys__.__env__.get("SUDO_PASSWORD");
-  // || (global as any).__sys__?.$env?.("SUDO_PASSWORD");
-  const pwd = sudoPassword || envPwd;
+  // 1. Direct option passed by the user
+  if (sudoPassword) {
+    Logger.info(
+      `[XyNginC] Using sudo password provided via plugin options(${sudoPassword.slice(0, 2)}***).`,
+    );
+    return `echo '${sudoPassword}' | sudo -S`;
+  }
 
-  if (pwd) {
-    if (sudoPassword) {
-      Logger.info(
-        `[XyNginC] Using sudo password provided via plugin options(${sudoPassword.slice(0, 2)}***).`,
-      );
-    } else {
-      Logger.info(
-        "[XyNginC] Using sudo password injected from environment variables.",
-      );
-    }
-    return `echo '${pwd}' | sudo -S`;
+  // 2. Official XyPriss Workspace API resolution of SUDO_PASSWORD
+  const envPwd =
+    typeof __sys__ !== "undefined"
+      ? __sys__.__env__?.get("SUDO_PASSWORD") ||
+        __sys__.__env__?.get("XY_SUDO_PASSWORD") ||
+        __sys__.__env__?.get("XYPRISS_SUDO_PASSWORD")
+      : undefined;
+
+  if (envPwd) {
+    Logger.info(
+      "[XyNginC] Using sudo password injected from environment variables.",
+    );
+    return `echo '${envPwd}' | sudo -S`;
   }
 
   Logger.warn(
-    "[XyNginC] ⚠️ No sudo password provided. Falling back to non-interactive mode (sudo -n).",
+    "[XyNginC] ⚠️ No sudo password detected (options or __sys__.__env__). Falling back to non-interactive mode (sudo -n).",
+  );
+  Logger.warn(
+    "[XyNginC] 💡 If SUDO_PASSWORD is set in your host .env, this means either:",
+  );
+  Logger.warn(
+    "[XyNginC]    1. The variable is missing or empty in your environment.",
+  );
+  Logger.warn(
+    "[XyNginC]    2. The plugin lacks workspace permission to access host env in 'xypriss.config.jsonc' (under '$internal').",
+  );
+  Logger.warn(
+    "[XyNginC] 👉 Solution: Authorize permissions in 'xypriss.config.jsonc' or pass 'sudoPassword' directly in the plugin options.",
   );
   Logger.warn(
     "[XyNginC] ⚠️ If the command requires a password, it will fail immediately instead of hanging.",
