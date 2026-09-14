@@ -87,7 +87,8 @@ function download(url, dest, redirectCount = 0) {
 
 async function run() {
   const arch = os.arch();
-  const binaryName = `xynginc-${platform}-${arch}`;
+  const goArch = arch === "x64" ? "amd64" : arch;
+  const binaryName = `xynginc-${platform}-${goArch}`;
   const downloadUrl = `https://github.com/Nehonix-Team/xynginc/releases/latest/download/${binaryName}`;
 
   console.log(`> [XyNginC] Target Binary: ${binaryName}`);

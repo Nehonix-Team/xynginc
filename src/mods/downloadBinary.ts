@@ -29,6 +29,7 @@ export async function downloadBinary(version: string): Promise<string> {
 async function doDownload(version: string): Promise<string> {
   const platform = __sys__.os.platform();
   const arch = __sys__.os.arch();
+  const goArch = arch === "x64" ? "amd64" : arch;
 
   if (platform !== "linux") {
     throw new Error(
@@ -36,7 +37,7 @@ async function doDownload(version: string): Promise<string> {
     );
   }
 
-  const binaryName = `${BINARY_NAME}-${platform}-${arch}`;
+  const binaryName = `${BINARY_NAME}-${platform}-${goArch}`;
   const downloadUrl =
     version === "latest"
       ? `https://github.com/${GITHUB_REPO}/releases/latest/download/${binaryName}`
