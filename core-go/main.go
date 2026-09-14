@@ -305,7 +305,7 @@ func init() {
 			}
 		},
 	}
-	cmdServiceLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", false, "Follow log stream in real time")
+	cmdServiceLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", true, "Follow log stream in real time")
 	cmdServiceLogs.Flags().IntVarP(&srvLogsLines, "lines", "n", 50, "Number of recent log lines to display")
 	cmdService.AddCommand(cmdServiceLogs)
 
@@ -335,7 +335,7 @@ func init() {
 			}
 		},
 	}
-	cmdLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", false, "Follow log stream in real time")
+	cmdLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", true, "Follow log stream in real time")
 	cmdLogs.Flags().IntVarP(&srvLogsLines, "lines", "n", 50, "Number of recent log lines to display")
 	rootCmd.AddCommand(cmdLogs)
 }

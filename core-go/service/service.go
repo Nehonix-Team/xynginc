@@ -1,16 +1,20 @@
 package service
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/fatih/color"
 
 	"xynginc/logger"
 )
@@ -332,7 +336,57 @@ func StatusService(args []string) error {
 	return nil
 }
 
-// LogsService streams journalctl logs for the service.
+var (
+	cyanBold    = color.New(color.FgCyan, color.Bold).SprintFunc()
+	yellowBold  = color.New(color.FgYellow, color.Bold).SprintFunc()
+	redBold     = color.New(color.FgRed, color.Bold).SprintFunc()
+	greenBold   = color.New(color.FgGreen, color.Bold).SprintFunc()
+	magentaBold = color.New(color.FgMagenta, color.Bold).SprintFunc()
+	dimGray     = color.New(color.FgHiBlack).SprintFunc()
+	cyanUnder   = color.New(color.FgCyan, color.Underline).SprintFunc()
+	blueBold    = color.New(color.FgBlue, color.Bold).SprintFunc()
+
+	reTimestamp = regexp.MustCompile(`^(\d{2}:\d{2}:\d{2}\.\d{3}\s+)`)
+	reURL       = regexp.MustCompile(`(https?://[^\s]+)`)
+)
+
+func colorizeLogLine(line string) string {
+	// If line is a visual separator, dim it
+	if strings.HasPrefix(strings.TrimSpace(line), "───") {
+		return dimGray(line)
+	}
+
+	// Dim leading timestamp if present
+	if match := reTimestamp.FindString(line); match != "" {
+		line = dimGray(match) + line[len(match):]
+	}
+
+	// Colorize badges
+	line = strings.ReplaceAll(line, "[SECURITY]", yellowBold("[SECURITY]"))
+	line = strings.ReplaceAll(line, "[SYSTEM]", cyanBold("[SYSTEM]"))
+	line = strings.ReplaceAll(line, "[INTERNAL]", dimGray("[INTERNAL]"))
+	line = strings.ReplaceAll(line, "[CLUSTER]", magentaBold("[CLUSTER]"))
+	line = strings.ReplaceAll(line, "[PLUGINS]", greenBold("[PLUGINS]"))
+	line = strings.ReplaceAll(line, "[XHSC]", blueBold("[XHSC]"))
+	line = strings.ReplaceAll(line, "[ERROR]", redBold("[ERROR]"))
+	line = strings.ReplaceAll(line, "[EMERGENCY]", redBold("[EMERGENCY]"))
+	line = strings.ReplaceAll(line, "[WARN]", yellowBold("[WARN]"))
+
+	// Status tokens
+	line = strings.ReplaceAll(line, "VERIFIED:", greenBold("VERIFIED:"))
+	line = strings.ReplaceAll(line, "✓", greenBold("✓"))
+	line = strings.ReplaceAll(line, "❌", redBold("❌"))
+	line = strings.ReplaceAll(line, "⚠️", yellowBold("⚠️"))
+
+	// Underline URLs
+	line = reURL.ReplaceAllStringFunc(line, func(u string) string {
+		return cyanUnder(u)
+	})
+
+	return line
+}
+
+// LogsService streams journalctl logs for the service with real-time colorization.
 func LogsService(args []string, follow bool, lines int) error {
 	name := resolveServiceName(args)
 	serviceName := fmt.Sprintf("%s.service", name)
@@ -341,7 +395,8 @@ func LogsService(args []string, follow bool, lines int) error {
 		lines = 50
 	}
 
-	journalArgs := []string{"-u", serviceName, "-n", strconv.Itoa(lines), "--no-pager"}
+	// Use -o cat to strip systemd prefix (e.g. 'Sep 14 ... server[104593]:')
+	journalArgs := []string{"-u", serviceName, "-n", strconv.Itoa(lines), "--no-pager", "-o", "cat"}
 	if follow {
 		journalArgs = append(journalArgs, "-f")
 	}
@@ -349,11 +404,34 @@ func LogsService(args []string, follow bool, lines int) error {
 	logger.Info(fmt.Sprintf("Streaming logs for '%s' (Ctrl+C to exit)...\n", name))
 
 	cmd := exec.Command("journalctl", journalArgs...)
-	cmd.Stdout = os.Stdout
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to open stdout pipe: %w", err)
+	}
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
 
-	return cmd.Run()
+	// Handle SIGINT gracefully (Ctrl+C)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start journalctl: %w", err)
+	}
+
+	go func() {
+		<-sigChan
+		_ = cmd.Process.Kill()
+		fmt.Println()
+		os.Exit(0)
+	}()
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(colorizeLogLine(line))
+	}
+
+	return cmd.Wait()
 }
 
 // UninstallService stops, disables, and removes the systemd unit.
