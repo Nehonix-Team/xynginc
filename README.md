@@ -1,6 +1,6 @@
 # XyNginC (XNCP)
 
-> **XyPriss Nginx Controller** — Automated Nginx reverse proxy, automated Let's Encrypt SSL, and production systemd background service management for the XyPriss ecosystem.
+XyPriss Nginx Controller (XNCP) is an enterprise-grade infrastructure controller providing automated reverse proxy configuration, Let's Encrypt SSL/TLS lifecycle management, and systemd service orchestration for the XyPriss web ecosystem.
 
 [![xfpm version](https://badge.fury.io/js/xynginc.svg)](https://www.npmjs.com/package/xynginc)
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
@@ -8,47 +8,65 @@
 
 ---
 
-## 🌟 Overview
+## 1. Architectural Overview
 
-**XyNginC** transforms complex Linux server deployment into a unified, developer-friendly experience. Built with a **high-performance native Go core** and a **Zero-Trust TypeScript plugin**, XyNginC handles:
-1. **Automated Reverse Proxy**: Maps your domains to local ports seamlessly.
-2. **Instant SSL/TLS**: Automatic Let's Encrypt certificate acquisition & renewal via Certbot.
-3. **Production-Hardened Nginx**: Zero manual config files — downloads and applies security-hardened templates (OWASP & CIS benchmarks, HTTP/2, custom security headers with `headers-more`).
-4. **Resilient Background Service (`systemd`)**: Run your XyPriss server 24/7 as an auto-restarting systemd service with automatic reboot recovery and real-time log streaming.
+XyNginC eliminates manual web server configuration by bridging application-level declarations in XyPriss directly with Linux system-level primitives. The architecture is composed of two primary layers:
+
+1. **TypeScript Controller Plugin**: Integrates into the XyPriss lifecycle, validates domain declarations, enforces security boundaries, and prevents execution conflicts in multi-tenant or multi-server topologies.
+2. **Native Go Engine (`core-go`)**: A compiled binary that interacts directly with host system utilities (`nginx`, `certbot`, `ufw`, `systemd`). It executes operations with deterministic speed, zero runtime overhead, and strict isolation.
+
+```mermaid
+graph TD
+    A[XyPriss Application Server] -->|TypeScript API / Zero-Trust| B(XyNginC Plugin Wrapper)
+    B -->|Encrypted IPC / Temp Configuration| C(XyNginC Native Go Engine)
+    C -->|Configuration & Service Reload| D[Nginx Reverse Proxy & Headers-More]
+    C -->|ACME Automation| E[Let's Encrypt SSL / Certbot]
+    C -->|Process Supervision| F[Linux Systemd Daemon]
+```
+
+---
+
+## 2. Core Capabilities
+
+- **Automated Reverse Proxy**: Generates hardened Nginx virtual host declarations matching local application ports.
+- **Automated TLS Lifecycle**: Manages certificate issuance and HTTP-01 challenge completion via Certbot without service interruption.
+- **Production Hardening**: Implements CIS and OWASP-aligned configuration baselines, HTTP/2 termination, and connection pooling.
+- **Header Obfuscation**: Integrates `libnginx-mod-http-headers-more-filter` to strip default web server identification tokens and enforce `Server: NEHONIX/XNCP`.
+- **Systemd Process Supervision**: Provides one-command deployment to transform XyPriss applications into self-healing, auto-restarting systemd daemons.
+- **Multi-Server Deduplication**: Synchronizes state across multiple sub-instances sharing identical domain configurations to prevent redundant Nginx reloads.
+- **Firewall Integration**: Optionally verifies and provisions access rules on active Uncomplicated Firewall (UFW) configurations.
+
+---
+
+## 3. System Requirements & Compatibility
+
+- **Operating System**: Linux (Ubuntu 22.04+, Debian 11+ recommended).
+- **Architectures**: x86_64 (`amd64`), ARM64 (`aarch64`), x86 (`386`).
+- **Runtimes**: Bun (v1.2+), Node.js (v18.0+).
+- **Package Manager**: XFPM (XyPriss Fast Package Manager).
 
 > [!IMPORTANT]
-> XyNginC is designed for **Linux production servers** (Ubuntu/Debian VPS or Dedicated servers) running the **XyPriss** ecosystem with **Bun** or **Node.js**. Supported architectures: **x64**, **arm64**, and **ia32**.
+> XyNginC is designed specifically for Linux server environments in production. Windows and macOS are not supported for production deployments.
 
 ---
 
-## 🚀 Key Features
+## 4. Installation
 
-- 🔒 **Automated HTTPS & SSL**: Full Let's Encrypt integration with automated challenge resolution and renewals.
-- ⚡ **Native Go Engine**: System-level commands, JSON parsing, and firewall manipulations are executed with microsecond Go performance.
-- 🔄 **Managed Systemd Services**: One-command background deployment with automatic restart on crash or server reboot (`xynginc service install`).
-- 🛡️ **Headers-More & Stealth**: Automatically hides server signatures and applies `Server: NEHONIX/XNCP` via `libnginx-mod-http-headers-more-filter`.
-- 📁 **Non-Intrusive & Signed**: Cryptographically signed with `xypriss.plugin.xsig` under XyPriss Zero-Trust specifications.
-- 🏢 **Multi-Server & Multi-Tenant Support**: Deduplicates configuration execution when hosting multiple XyPriss apps on the same machine.
-- 🧱 **Automated Firewall Setup**: Automatically checks and configures UFW rules for ports `80` and `443`.
-
----
-
-## 📦 Installation
-
-In accordance with XyPriss standards, always use the **XFPM** package manager:
+XyNginC is distributed through the official XyPriss registry using XFPM:
 
 ```bash
-# Install XyNginC in your XyPriss project
 xfpm install xynginc
 ```
 
-The package provides two CLI binaries: `xynginc` and `xncp`.
+The package registers two CLI aliases in the workspace environment: `xynginc` and `xncp`.
 
 ---
 
-## 🛠️ Quick Start
+## 5. Integration
 
-### 1. Register the Plugin in your XyPriss Server
+### Basic Server Declaration
+
+Register XyNginC within the server initialization pipeline:
 
 ```typescript
 import { createServer } from "xypriss";
@@ -63,23 +81,19 @@ const app = createServer({
             domain: "api.example.com",
             port: 8088,
             ssl: true,
-            email: "admin@example.com",
-            maxBodySize: "20M", // Optional, defaults to "10M"
+            email: "ops@example.com",
+            maxBodySize: "25M",
           },
           {
             domain: "auth.example.com",
             port: 8089,
             ssl: true,
-            email: "admin@example.com",
+            email: "ops@example.com",
           },
         ],
-        // Automatically install Nginx, Certbot, and headers-more if missing
         installRequirements: true,
-        // Automatically reload Nginx after config generation
         autoReload: true,
-        // Automatically open ports 80 & 443 in UFW if enabled
         autoFixFirewall: true,
-        // Sudo password for background/non-interactive execution
         sudoPassword: process.env.SUDO_PASSWORD,
       }),
     ],
@@ -91,189 +105,153 @@ app.start();
 
 ---
 
-## 🖥️ Systemd Service Management (Production DX)
+## 6. Process Supervision & Service Management
 
-XyNginC provides a complete, zero-config CLI suite to turn any XyPriss app into a resilient, auto-restarting background Linux service.
+XyNginC includes dedicated systemd management commands to ensure persistent execution, crash resilience, and automatic startup upon system boot.
 
-You can run these commands directly or via `xfpmx`:
+### Service Deployment
+
+From the root directory of your project:
 
 ```bash
-# Install & start the current project as a background service
 sudo xfpmx xncp service install
+```
 
-# Check service and Nginx status in a single unified dashboard
-xfpmx xncp service status
+The installer automatically:
+1. Detects the execution runtime (`bun` or `node`).
+2. Detects the project entrypoint (`src/server.ts`, `server.ts`, `dist/index.js`).
+3. Discovers and binds the local `.env` configuration (`EnvironmentFile`).
+4. Configures process execution under the non-root owner (`SUDO_USER` or `ubuntu`).
+5. Enforces resource limits (`LimitNOFILE=65535`, `LimitNPROC=4096`).
+6. Configures auto-restart policies (`Restart=always`, `RestartSec=5s`).
+7. Enables and immediately launches the service unit via systemd.
 
-# Stream application logs live (no sudo needed!)
+### Service Operations
+
+```bash
+# Display service status and Nginx health
+xfpmx xncp service status [service-name]
+
+# Follow live application log output
 xfpmx xncp logs -f
 
-# Restart or stop the background service
-sudo xfpmx xncp service restart
-sudo xfpmx xncp service stop
+# Restart, stop, or start service
+sudo xfpmx xncp service restart [service-name]
+sudo xfpmx xncp service stop [service-name]
+sudo xfpmx xncp service start [service-name]
 
-# Completely remove the service
-sudo xfpmx xncp service uninstall
+# Uninstall and deregister service unit
+sudo xfpmx xncp service uninstall [service-name]
 ```
-
-### What `service install` does automatically:
-1. **Detects Runtime**: Automatically locates your runtime (`/home/user/.xfpm/bin/bun`, `bun`, or `node`).
-2. **Detects Entrypoint**: Inspects `src/server.ts`, `server.ts`, `dist/index.js`, or `package.json#main`.
-3. **Detects Environment**: Automatically injects your `.env` file (`EnvironmentFile`).
-4. **Secures User Permissions**: Configures the service under your Linux user (e.g. `ubuntu`) rather than `root`.
-5. **Enforces Production Limits**: Injects `LimitNOFILE=65535` and `Restart=always` with a 5-second backoff.
-6. **Enables Boot Startup**: Runs `systemctl daemon-reload && systemctl enable --now <service>`.
 
 ---
 
-## 💻 CLI Reference
+## 7. Command-Line Interface Reference
 
-You can invoke XyNginC through `xynginc`, `xncp`, or via `xfpmx`:
+The CLI can be invoked globally as `xynginc` / `xncp` or locally via `xfpmx xncp`:
 
 ```bash
-# Check system requirements (nginx, certbot, headers-more)
-sudo xynginc check
+# Infrastructure Diagnostics & Setup
+sudo xynginc check                     # Verify system dependencies
+sudo xynginc install                   # Install missing system requirements
 
-# Install all missing requirements non-interactively
-sudo xynginc install
+# Service Supervision
+sudo xynginc service install [name]    # Provision and start systemd service
+sudo xynginc service start [name]      # Start managed service
+sudo xynginc service stop [name]       # Stop managed service
+sudo xynginc service restart [name]    # Restart managed service
+xynginc service status [name]          # Inspect unit status and reverse proxy state
+xynginc service logs [name] -f         # Stream live service logs
+sudo xynginc service uninstall [name]  # Remove service unit
 
-# Service lifecycle management
-sudo xynginc service install [service-name] [flags]
-sudo xynginc service start [service-name]
-sudo xynginc service stop [service-name]
-sudo xynginc service restart [service-name]
-xynginc service status [service-name]
-xynginc service logs [service-name] [-f] [-n 50]
-sudo xynginc service uninstall [service-name]
-
-# Direct log streaming shortcut
+# Direct Log Streaming Alias
 xynginc logs -f
 
-# Manual domain management
-sudo xynginc add --domain api.example.com --port 8080 --ssl --email admin@example.com
-sudo xynginc remove api.example.com
+# Virtual Host Management
+sudo xynginc add --domain example.com --port 8080 --ssl --email ops@example.com
+sudo xynginc remove example.com
 sudo xynginc list
 
-# Nginx config testing and reload
-sudo xynginc test
-sudo xynginc reload
-
-# Clean up broken or stale configurations
-sudo xynginc clean
-
-# Restore from backup
-sudo xynginc restore <backup_id>
+# Server Validation & Maintenance
+sudo xynginc test                      # Validate current Nginx syntax
+sudo xynginc reload                    # Safely reload Nginx configuration
+sudo xynginc clean                     # Purge conflicting or broken virtual hosts
+sudo xynginc restore <backup_id>       # Revert to a previous configuration backup
 ```
 
-### `service install` Flags:
-| Flag | Short | Description | Default |
+### Options for `service install`
+
+| Parameter | Alias | Description | Default |
 |---|---|---|---|
-| `--name` | `-n` | Custom service name | Inferred from `package.json` |
-| `--runtime` | `-r` | Path to runtime binary | Inferred (`bun` / `node`) |
-| `--entrypoint` | `-e` | Path to app entrypoint | Inferred (`src/server.ts`...) |
-| `--user` | `-u` | System execution user | `SUDO_USER` / current user |
-| `--env-file` | | Path to `.env` file | Auto-detected `.env` in cwd |
+| `--name` | `-n` | Systemd service unit identifier | `name` in `package.json` |
+| `--runtime` | `-r` | Absolute path to runtime binary | Auto-detected (`bun`/`node`) |
+| `--entrypoint` | `-e` | Path to server bootstrap file | Auto-detected (`src/server.ts`...) |
+| `--user` | `-u` | Linux system user for process execution | `SUDO_USER` / current user |
+| `--env-file` | | Path to environment file | Auto-detected `.env` in directory |
 
 ---
 
-## ⚙️ Plugin Options Reference
+## 8. TypeScript Plugin Options
 
 ```typescript
+interface XyNginCDomainConfig {
+  domain: string;           // Target host (e.g., "api.example.com")
+  port: number;             // Local listener port
+  ssl?: boolean;            // Enable Let's Encrypt TLS (default: false)
+  email?: string;           // Registration email for ACME notifications
+  maxBodySize?: string;     // Client request limit, e.g., "50M" (default: "10M")
+}
+
 interface XyNginCPluginOptions {
-  /** List of domains to reverse-proxy */
-  domains: Array<{
-    domain: string;           // Domain or subdomain (e.g. "api.example.com")
-    port: number;             // Local target port (e.g. 8088)
-    ssl?: boolean;            // Enable Let's Encrypt SSL (default: false)
-    email?: string;           // Contact email for Let's Encrypt (required if ssl=true)
-    maxBodySize?: string;     // Client max upload size, e.g. "20M" (default: "10M")
-  }>;
-
-  /** Automatically install missing dependencies (nginx, certbot, headers-more) */
-  installRequirements?: boolean; // (default: false)
-
-  /** Automatically reload Nginx after configuration updates */
-  autoReload?: boolean;          // (default: true)
-
-  /** Automatically open ports 80 and 443 in UFW if firewall is active */
-  autoFixFirewall?: boolean;     // (default: false)
-
-  /** Sudo password for headless / background execution */
-  sudoPassword?: string;         // (can also use env SUDO_PASSWORD)
-
-  /** Custom path to the xynginc Go binary */
-  binaryPath?: string;
-
-  /** Auto-download binary from GitHub releases if missing */
-  autoDownload?: boolean;        // (default: true)
-
-  /** Specific Go core release tag to download */
-  version?: string;             // (default: "latest")
+  domains: XyNginCDomainConfig[];
+  installRequirements?: boolean; // Provision system dependencies if missing (default: false)
+  autoReload?: boolean;          // Reload Nginx upon successful configuration (default: true)
+  autoFixFirewall?: boolean;     // Provision UFW rules for 80/443 (default: false)
+  sudoPassword?: string;         // Password for non-interactive privilege escalation
+  binaryPath?: string;           // Custom path to xynginc Go binary
+  autoDownload?: boolean;        // Automatically retrieve binary if not present (default: true)
+  version?: string;              // Specific Go core release tag (default: "latest")
 }
 ```
 
 ---
 
-## 🔧 Runtime Programmatic API
+## 9. Programmatic Server API
 
-When the plugin is registered, the following methods are accessible via `server.xynginc`:
+When registered, XyNginC attaches management methods directly to `server.xynginc`:
 
 ```typescript
-// Add a domain configuration at runtime
-await server.xynginc.addDomain(
-  domain: string,
-  port: number,
-  ssl?: boolean,
-  email?: string,
-  maxBodySize?: string
-): Promise<void>;
+// Dynamically register a domain at runtime
+await server.xynginc.addDomain(domain, port, ssl, email, maxBodySize);
 
-// Remove a domain configuration
-await server.xynginc.removeDomain(domain: string): Promise<void>;
+// Unregister a domain and remove virtual host
+await server.xynginc.removeDomain(domain);
 
-// List all active domains
-const domains = await server.xynginc.listDomains(): Promise<string[]>;
+// Query configured domain inventory
+const domains: string[] = await server.xynginc.listDomains();
 
-// Test Nginx configuration validity
-const ok = await server.xynginc.test(): Promise<boolean>;
+// Execute Nginx configuration test
+const isSyntacticallyValid: boolean = await server.xynginc.test();
 
-// Reload Nginx service
-await server.xynginc.reload(): Promise<void>;
+// Trigger safe service reload
+await server.xynginc.reload();
 
-// Get status summary
-const status = await server.xynginc.status(): Promise<string>;
+// Retrieve aggregate infrastructure status
+const summary: string = await server.xynginc.status();
 ```
 
 ---
 
-## 🏗️ Architecture
+## 10. Security & Compliance Specifications
 
-XyNginC operates on a high-efficiency 3-tier architecture:
-
-```mermaid
-graph TD
-    A[XyPriss App Server] -->|TypeScript API / Zero-Trust| B(XyNginC Plugin Wrapper)
-    B -->|Encrypted temporary config / tmpfs| C(XyNginC Go Core Binary)
-    C -->|Systemctl & APT| D[Nginx Reverse Proxy & Headers-More]
-    C -->|Certbot API| E[Let's Encrypt SSL Certificates]
-    C -->|Systemd Service API| F[Linux Systemd Daemon]
-```
-
-1. **XyPriss Application**: Your server logic running under Bun or Node.js.
-2. **TypeScript Plugin**: Validates configurations, prevents redundant executions in multi-server architectures, and bridges safely with host privileges.
-3. **Go Core (`core-go`)**: A statically compiled Go binary that manipulates Nginx configurations, interfaces with Certbot, configures UFW firewall rules, and registers systemd services.
+- **Privilege Separation**: Application services execute strictly under unprivileged user accounts. Privilege escalation via `sudo` is scoped exclusively to configuration files and service reloads.
+- **Secure File Passing**: Configurations are passed to the Go core via transient, restricted-permission files (`/tmp/.xynginc-config-*.json`) that are deleted immediately after parsing to prevent sensitive data leakage.
+- **Signature Integrity**: Distributed with an official cryptographic manifest (`xypriss.plugin.xsig`) validated by the XyPriss runtime against unauthorized modification.
+- **Network Boundaries**: Nginx reverse proxy templates restrict upstream listeners to loopback interfaces (`127.0.0.1`) by default, preventing direct public exposure of internal microservices.
 
 ---
 
-## 🛡️ Security & Hardening
+## 11. License
 
-- **Privilege Separation**: Application processes run under standard user accounts (`ubuntu`, etc.), while system operations use controlled `sudo` escalation only when needed.
-- **Header Obfuscation**: The `headers-more` module automatically clears `Server` headers and presents `Server: NEHONIX/XNCP` to disguise backend technologies.
-- **Config Isolation**: Configuration data is piped via secure temporary files (`/tmp/.xynginc-config-*.json`) that are immediately shredded after application to prevent password leaks.
-- **Cryptographic Signing**: Packaged with a valid `xypriss.plugin.xsig` signature for XyPriss Zero-Trust integrity validation.
-
----
-
-## 📜 License
-
-This project is licensed under the **NEHONIX Open Source License (NOSL) v1.0**.  
+This software is licensed under the **NEHONIX Open Source License (NOSL) v1.0**.  
 Copyright © 2025-2026 [NEHONIX](https://www.nehonix.com). All rights reserved.
