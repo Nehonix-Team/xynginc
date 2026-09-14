@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,9 @@ import (
 	"xynginc/logger"
 )
 
+//go:embed configs/* configs/errors/*
+var embeddedConfigs embed.FS
+
 const (
 	NginxSitesAvailable = "/etc/nginx/sites-available"
 	NginxSitesEnabled   = "/etc/nginx/sites-enabled"
@@ -16,8 +20,7 @@ const (
 )
 
 var (
-	// Defaulting to "main" branch. If testing locally before pushing to main, 
-	// this will fail with 404 until pushed.
+	// Defaulting to "master" branch.
 	BaseUrl = "https://raw.githubusercontent.com/Nehonix-Team/xynginc/master/core-go/configs/"
 	cache   = make(map[string]string)
 	mu      sync.Mutex
@@ -31,6 +34,16 @@ func fetch(path string) (string, error) {
 	}
 	mu.Unlock()
 
+	// 1. Primary: Use embedded config if present
+	if data, err := embeddedConfigs.ReadFile("configs/" + path); err == nil && len(data) > 0 {
+		content := string(data)
+		mu.Lock()
+		cache[path] = content
+		mu.Unlock()
+		return content, nil
+	}
+
+	// 2. Fallback to GitHub
 	reqUrl := BaseUrl + path
 	logger.Info(fmt.Sprintf("   → Downloading config: %s", reqUrl))
 
