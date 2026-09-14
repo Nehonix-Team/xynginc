@@ -15,11 +15,15 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "xynginc",
-	Version: "go-ed-1.1.8",
+	Version: "go-ed-1.1.12",
 	Short:   "XyPriss Nginx Controller - Simplified Nginx and SSL management",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Only enforce root for actual operational commands, skip for version/help/status/logs
-		if cmd.Name() != "help" && cmd.Name() != "xynginc" && cmd.Name() != "logs" && cmd.Name() != "status" {
+		// Read-only commands do not require root
+		readOnlyCmds := map[string]bool{
+			"help": true, "xynginc": true, "logs": true, "status": true,
+			"list": true, "services": true, "check": true, "version": true,
+		}
+		if !readOnlyCmds[cmd.Name()] {
 			if !isRoot() {
 				logger.Error("❌ Error: XyNginC requires root privileges for this command")
 				logger.Error("   Please run with sudo: sudo xynginc " + cmd.Name() + " ...")
@@ -322,7 +326,35 @@ func init() {
 	}
 	cmdService.AddCommand(cmdServiceUninstall)
 
+	// service list (aliases: ls, ps)
+	var cmdServiceList = &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls", "ps"},
+		Short:   "List all background services managed by XyNginC",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.ListServices(); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceList)
+
 	rootCmd.AddCommand(cmdService)
+
+	// services alias at root
+	var cmdServices = &cobra.Command{
+		Use:     "services",
+		Aliases: []string{"ps"},
+		Short:   "List all background services managed by XyNginC (alias for 'service list')",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.ListServices(); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	rootCmd.AddCommand(cmdServices)
 
 	// logs alias at root
 	var cmdLogs = &cobra.Command{

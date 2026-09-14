@@ -459,3 +459,156 @@ func UninstallService(args []string) error {
 	logger.Success(fmt.Sprintf("✓ Service '%s' successfully uninstalled.", name))
 	return nil
 }
+
+// ServiceItem represents metadata and runtime state of a systemd unit.
+type ServiceItem struct {
+	Name        string
+	Unit        string
+	ActiveState string
+	SubState    string
+	PID         string
+	Memory      string
+	Started     string
+	User        string
+	WorkDir     string
+	ExecStart   string
+}
+
+func formatMemoryBytes(str string) string {
+	b, err := strconv.ParseUint(strings.TrimSpace(str), 10, 64)
+	if err != nil || b == 0 || b == 18446744073709551615 {
+		return "-"
+	}
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// ListServices discovers and displays all services managed by XyNginC.
+func ListServices() error {
+	logger.Step("=== XyNginC Managed Services ===\n")
+
+	files, err := os.ReadDir("/etc/systemd/system")
+	if err != nil {
+		return fmt.Errorf("failed to read /etc/systemd/system: %w", err)
+	}
+
+	var services []ServiceItem
+	runningCount := 0
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".service") {
+			continue
+		}
+
+		unitPath := filepath.Join("/etc/systemd/system", file.Name())
+		contentBytes, err := os.ReadFile(unitPath)
+		if err != nil {
+			continue
+		}
+
+		content := string(contentBytes)
+		if !strings.Contains(content, "Managed by XyNginC") && !strings.Contains(content, "XyNginC") {
+			continue
+		}
+
+		name := strings.TrimSuffix(file.Name(), ".service")
+		item := ServiceItem{
+			Name: name,
+			Unit: file.Name(),
+		}
+
+		// Extract static attributes from unit file
+		for _, line := range strings.Split(content, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "WorkingDirectory=") {
+				item.WorkDir = strings.TrimPrefix(line, "WorkingDirectory=")
+			} else if strings.HasPrefix(line, "User=") {
+				item.User = strings.TrimPrefix(line, "User=")
+			} else if strings.HasPrefix(line, "ExecStart=") {
+				item.ExecStart = strings.TrimPrefix(line, "ExecStart=")
+			}
+		}
+
+		// Query systemctl for live status
+		showCmd := exec.Command("systemctl", "show", file.Name(), "-p", "ActiveState,SubState,MainPID,ExecMainStartTimestamp,MemoryCurrent")
+		if out, err := showCmd.CombinedOutput(); err == nil {
+			for _, line := range strings.Split(string(out), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "ActiveState=") {
+					item.ActiveState = strings.TrimPrefix(line, "ActiveState=")
+				} else if strings.HasPrefix(line, "SubState=") {
+					item.SubState = strings.TrimPrefix(line, "SubState=")
+				} else if strings.HasPrefix(line, "MainPID=") {
+					item.PID = strings.TrimPrefix(line, "MainPID=")
+				} else if strings.HasPrefix(line, "ExecMainStartTimestamp=") {
+					item.Started = strings.TrimPrefix(line, "ExecMainStartTimestamp=")
+				} else if strings.HasPrefix(line, "MemoryCurrent=") {
+					item.Memory = formatMemoryBytes(strings.TrimPrefix(line, "MemoryCurrent="))
+				}
+			}
+		}
+
+		if item.PID == "0" {
+			item.PID = "-"
+		}
+		if item.Memory == "" {
+			item.Memory = "-"
+		}
+		if item.ActiveState == "active" && item.SubState == "running" {
+			runningCount++
+		}
+
+		services = append(services, item)
+	}
+
+	if len(services) == 0 {
+		fmt.Println("  No background services currently managed by XyNginC.")
+		fmt.Println("  Run 'sudo xynginc service install' inside your project directory to register one.\n")
+		return nil
+	}
+
+	// Print aligned header
+	fmt.Printf("  %-18s %-20s %-8s %-12s %-10s %s\n", "NAME", "STATUS", "PID", "MEMORY", "USER", "DIRECTORY")
+	fmt.Printf("  %-18s %-20s %-8s %-12s %-10s %s\n", "----", "------", "---", "------", "----", "---------")
+
+	for _, s := range services {
+		var statusStr string
+		if s.ActiveState == "active" && s.SubState == "running" {
+			statusStr = greenBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
+		} else if s.ActiveState == "failed" || s.SubState == "failed" {
+			statusStr = redBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
+		} else if s.ActiveState == "activating" {
+			statusStr = yellowBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
+		} else {
+			statusStr = dimGray(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
+		}
+
+		// Calculate visual padding accounting for ANSI codes
+		rawStatus := fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState)
+		padding := 20 - len(rawStatus)
+		if padding < 0 {
+			padding = 0
+		}
+
+		fmt.Printf("  %-18s %s%s %-8s %-12s %-10s %s\n",
+			cyanBold(s.Name),
+			statusStr,
+			strings.Repeat(" ", padding),
+			s.PID,
+			s.Memory,
+			s.User,
+			s.WorkDir,
+		)
+	}
+
+	fmt.Printf("\nTotal: %d service(s) (%d active, %d stopped)\n\n", len(services), runningCount, len(services)-runningCount)
+	return nil
+}
