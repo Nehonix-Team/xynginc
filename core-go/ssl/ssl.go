@@ -39,8 +39,10 @@ func installCertbotNginxPlugin() error {
 func SetupSSL(config *models.DomainConfig) error {
 	logger.Step(fmt.Sprintf("> Setting up SSL for %s...", config.Domain))
 
-	if config.Email == "" {
-		return fmt.Errorf("email required for SSL")
+	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", config.Domain)
+	if _, err := os.Stat(certPath); err == nil {
+		logger.Success(fmt.Sprintf("✓ SSL certificate already exists for %s", config.Domain))
+		return nil
 	}
 
 	if !checkCertbotNginxPlugin() {
@@ -53,9 +55,14 @@ func SetupSSL(config *models.DomainConfig) error {
 		"certonly",
 		"--nginx",
 		"-d", config.Domain,
-		"--email", config.Email,
 		"--agree-tos",
 		"--non-interactive",
+	}
+
+	if config.Email != "" {
+		args = append(args, "--email", config.Email)
+	} else {
+		args = append(args, "--register-unsafely-without-email")
 	}
 
 	cmd := exec.Command("certbot", args...)
