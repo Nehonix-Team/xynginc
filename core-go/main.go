@@ -10,15 +10,16 @@ import (
 	"xynginc/check"
 	"xynginc/engine"
 	"xynginc/logger"
+	"xynginc/service"
 )
 
 var rootCmd = &cobra.Command{
 	Use:     "xynginc",
-	Version: "go-ed-1.1.6",
+	Version: "go-ed-1.1.8",
 	Short:   "XyPriss Nginx Controller - Simplified Nginx and SSL management",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Only enforce root for actual operational commands, skip for version/help
-		if cmd.Name() != "help" && cmd.Name() != "xynginc" {
+		// Only enforce root for actual operational commands, skip for version/help/status/logs
+		if cmd.Name() != "help" && cmd.Name() != "xynginc" && cmd.Name() != "logs" && cmd.Name() != "status" {
 			if !isRoot() {
 				logger.Error("❌ Error: XyNginC requires root privileges for this command")
 				logger.Error("   Please run with sudo: sudo xynginc " + cmd.Name() + " ...")
@@ -210,6 +211,133 @@ func init() {
 		},
 	}
 	rootCmd.AddCommand(cmdRestore)
+
+	// service
+	var cmdService = &cobra.Command{
+		Use:   "service",
+		Short: "Manage persistent systemd background service for XyPriss applications",
+	}
+
+	// service install
+	var srvName, srvRuntime, srvEntrypoint, srvUser, srvEnvFile string
+	var cmdServiceInstall = &cobra.Command{
+		Use:   "install [service-name]",
+		Short: "Auto-detect project, generate systemd service, and start it",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) > 0 && srvName == "" {
+				srvName = args[0]
+			}
+			if err := service.InstallService(srvName, srvRuntime, srvEntrypoint, srvUser, srvEnvFile); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdServiceInstall.Flags().StringVarP(&srvName, "name", "n", "", "Custom service name (default: from package.json)")
+	cmdServiceInstall.Flags().StringVarP(&srvRuntime, "runtime", "r", "", "Path to runtime executable (bun or node)")
+	cmdServiceInstall.Flags().StringVarP(&srvEntrypoint, "entrypoint", "e", "", "Path to entrypoint (e.g. src/server.ts)")
+	cmdServiceInstall.Flags().StringVarP(&srvUser, "user", "u", "", "Linux user to execute service (default: owner/SUDO_USER)")
+	cmdServiceInstall.Flags().StringVar(&srvEnvFile, "env-file", "", "Path to .env file to inject into service")
+	cmdService.AddCommand(cmdServiceInstall)
+
+	// service start
+	var cmdServiceStart = &cobra.Command{
+		Use:   "start [service-name]",
+		Short: "Start the background service",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.StartService(args); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceStart)
+
+	// service stop
+	var cmdServiceStop = &cobra.Command{
+		Use:   "stop [service-name]",
+		Short: "Stop the background service",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.StopService(args); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceStop)
+
+	// service restart
+	var cmdServiceRestart = &cobra.Command{
+		Use:   "restart [service-name]",
+		Short: "Restart the background service",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.RestartService(args); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceRestart)
+
+	// service status
+	var cmdServiceStatus = &cobra.Command{
+		Use:   "status [service-name]",
+		Short: "Show unified status of the service and reverse-proxy",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.StatusService(args); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceStatus)
+
+	// service logs
+	var srvLogsFollow bool
+	var srvLogsLines int
+	var cmdServiceLogs = &cobra.Command{
+		Use:   "logs [service-name]",
+		Short: "Follow real-time application service logs",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.LogsService(args, srvLogsFollow, srvLogsLines); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdServiceLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", false, "Follow log stream in real time")
+	cmdServiceLogs.Flags().IntVarP(&srvLogsLines, "lines", "n", 50, "Number of recent log lines to display")
+	cmdService.AddCommand(cmdServiceLogs)
+
+	// service uninstall
+	var cmdServiceUninstall = &cobra.Command{
+		Use:   "uninstall [service-name]",
+		Short: "Stop, disable, and remove the systemd service",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.UninstallService(args); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdService.AddCommand(cmdServiceUninstall)
+
+	rootCmd.AddCommand(cmdService)
+
+	// logs alias at root
+	var cmdLogs = &cobra.Command{
+		Use:   "logs [service-name]",
+		Short: "Follow real-time application service logs (alias for 'service logs')",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := service.LogsService(args, srvLogsFollow, srvLogsLines); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", false, "Follow log stream in real time")
+	cmdLogs.Flags().IntVarP(&srvLogsLines, "lines", "n", 50, "Number of recent log lines to display")
+	rootCmd.AddCommand(cmdLogs)
 }
 
 func main() {

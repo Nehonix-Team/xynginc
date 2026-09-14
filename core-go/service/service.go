@@ -1,0 +1,383 @@
+package service
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"syscall"
+
+	"xynginc/logger"
+)
+
+type PackageJSON struct {
+	Name    string            `json:"name"`
+	Main    string            `json:"main"`
+	Scripts map[string]string `json:"scripts"`
+}
+
+// AutoDetectServiceInfo attempts to intelligently detect runtime, entrypoint, project name, user and env file.
+func AutoDetectServiceInfo(customName, customRuntime, customEntrypoint, customUser, customEnvFile string) (name, runtime, entrypoint, runUser, envFile, cwd string, err error) {
+	cwd, err = os.Getwd()
+	if err != nil {
+		return "", "", "", "", "", "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// 1. Project / Service Name
+	name = customName
+	var pkg PackageJSON
+	pkgPath := filepath.Join(cwd, "package.json")
+	if data, err := os.ReadFile(pkgPath); err == nil {
+		_ = json.Unmarshal(data, &pkg)
+	}
+
+	if name == "" {
+		if pkg.Name != "" {
+			name = pkg.Name
+		} else {
+			name = filepath.Base(cwd)
+		}
+	}
+	// Sanitize service name (alphanumeric, dash, underscore)
+	reg := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
+	name = reg.ReplaceAllString(strings.ToLower(name), "-")
+	name = strings.Trim(name, "-")
+	if name == "" {
+		name = "xypriss-app"
+	}
+
+	// 2. User
+	runUser = customUser
+	if runUser == "" {
+		runUser = os.Getenv("SUDO_USER")
+		if runUser == "" || runUser == "root" {
+			// Try owner of cwd
+			if fi, err := os.Stat(cwd); err == nil {
+				if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+					if u, err := user.LookupId(strconv.Itoa(int(stat.Uid))); err == nil && u.Username != "root" {
+						runUser = u.Username
+					}
+				}
+			}
+		}
+		if runUser == "" {
+			runUser = os.Getenv("USER")
+		}
+		if runUser == "" {
+			runUser = "ubuntu"
+		}
+	}
+
+	// 3. Runtime (prefer Bun, then Node)
+	runtime = customRuntime
+	if runtime == "" {
+		var userHome string
+		if u, err := user.Lookup(runUser); err == nil {
+			userHome = u.HomeDir
+		} else {
+			userHome = filepath.Join("/home", runUser)
+		}
+
+		candidates := []string{
+			filepath.Join(userHome, ".xfpm/bin/bun"),
+			filepath.Join(userHome, ".bun/bin/bun"),
+			"/usr/local/bin/bun",
+			"/usr/bin/bun",
+			filepath.Join(userHome, ".xfpm/bin/node"),
+			filepath.Join(userHome, ".nvm/current/bin/node"),
+			"/usr/local/bin/node",
+			"/usr/bin/node",
+		}
+
+		for _, candidate := range candidates {
+			if _, err := os.Stat(candidate); err == nil {
+				runtime = candidate
+				break
+			}
+		}
+
+		if runtime == "" {
+			if path, err := exec.LookPath("bun"); err == nil {
+				runtime = path
+			} else if path, err := exec.LookPath("node"); err == nil {
+				runtime = path
+			} else {
+				return "", "", "", "", "", "", fmt.Errorf("neither 'bun' nor 'node' runtime could be found. Please specify with --runtime")
+			}
+		}
+	}
+
+	// 4. Entrypoint
+	entrypoint = customEntrypoint
+	if entrypoint == "" {
+		entryCandidates := []string{
+			"src/server.ts",
+			"server.ts",
+			"src/index.ts",
+			"index.ts",
+			"src/main.ts",
+			"dist/server.js",
+			"dist/index.js",
+		}
+
+		for _, candidate := range entryCandidates {
+			if _, err := os.Stat(filepath.Join(cwd, candidate)); err == nil {
+				entrypoint = candidate
+				break
+			}
+		}
+
+		if entrypoint == "" && pkg.Main != "" {
+			if _, err := os.Stat(filepath.Join(cwd, pkg.Main)); err == nil {
+				entrypoint = pkg.Main
+			}
+		}
+
+		if entrypoint == "" {
+			return "", "", "", "", "", "", fmt.Errorf("could not auto-detect entrypoint (e.g. src/server.ts). Please specify with --entrypoint")
+		}
+	}
+
+	// 5. Environment file
+	envFile = customEnvFile
+	if envFile == "" {
+		defaultEnv := filepath.Join(cwd, ".env")
+		if _, err := os.Stat(defaultEnv); err == nil {
+			envFile = defaultEnv
+		}
+	} else {
+		if !filepath.IsAbs(envFile) {
+			envFile = filepath.Join(cwd, envFile)
+		}
+	}
+
+	return name, runtime, entrypoint, runUser, envFile, cwd, nil
+}
+
+// InstallService generates and enables a production-grade systemd service for the current project.
+func InstallService(customName, customRuntime, customEntrypoint, customUser, customEnvFile string) error {
+	name, runtime, entrypoint, runUser, envFile, cwd, err := AutoDetectServiceInfo(
+		customName, customRuntime, customEntrypoint, customUser, customEnvFile,
+	)
+	if err != nil {
+		return err
+	}
+
+	serviceFileName := fmt.Sprintf("%s.service", name)
+	serviceFilePath := filepath.Join("/etc/systemd/system", serviceFileName)
+
+	logger.Step(fmt.Sprintf("> Configuring systemd service '%s'...\n", name))
+	fmt.Printf("   Project Name : %s\n", name)
+	fmt.Printf("   Working Dir  : %s\n", cwd)
+	fmt.Printf("   Runtime      : %s\n", runtime)
+	fmt.Printf("   Entrypoint   : %s\n", entrypoint)
+	fmt.Printf("   Exec User    : %s\n", runUser)
+	if envFile != "" {
+		fmt.Printf("   Env File     : %s\n", envFile)
+	} else {
+		fmt.Printf("   Env File     : (none)\n")
+	}
+
+	var envDirective string
+	if envFile != "" {
+		envDirective = fmt.Sprintf("EnvironmentFile=%s\n", envFile)
+	}
+
+	serviceContent := fmt.Sprintf(`[Unit]
+Description=%s Service (Managed by XyNginC)
+After=network.target nginx.service
+Wants=nginx.service
+
+[Service]
+Type=simple
+User=%s
+WorkingDirectory=%s
+ExecStart=%s %s
+Restart=always
+RestartSec=5s
+%sLimitNOFILE=65535
+LimitNPROC=4096
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=%s
+
+[Install]
+WantedBy=multi-user.target
+`, name, runUser, cwd, runtime, entrypoint, envDirective, name)
+
+	// Write service file
+	if err := os.WriteFile(serviceFilePath, []byte(serviceContent), 0644); err != nil {
+		return fmt.Errorf("failed to write service file %s: %w", serviceFilePath, err)
+	}
+	logger.Success(fmt.Sprintf("✓ Created unit file: %s", serviceFilePath))
+
+	// Reload systemd
+	logger.Info("   → Reloading systemd daemon...")
+	if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
+		return fmt.Errorf("systemctl daemon-reload failed: %s", string(out))
+	}
+
+	// Enable service for autostart on boot
+	logger.Info("   → Enabling service for automatic boot start...")
+	if out, err := exec.Command("systemctl", "enable", serviceFileName).CombinedOutput(); err != nil {
+		return fmt.Errorf("systemctl enable %s failed: %s", serviceFileName, string(out))
+	}
+
+	// Start or restart service
+	logger.Info("   → Starting service...")
+	if out, err := exec.Command("systemctl", "restart", serviceFileName).CombinedOutput(); err != nil {
+		return fmt.Errorf("systemctl restart %s failed: %s", serviceFileName, string(out))
+	}
+
+	logger.Success(fmt.Sprintf("\n🎉 Service '%s' is now running in background and enabled on boot!", name))
+	fmt.Println("\nHelpful commands:")
+	fmt.Printf("   • Check status : xynginc service status %s\n", name)
+	fmt.Printf("   • Follow logs  : xynginc service logs %s -f\n", name)
+	fmt.Printf("   • Restart      : xynginc service restart %s\n", name)
+	fmt.Printf("   • Stop         : xynginc service stop %s\n", name)
+
+	return nil
+}
+
+// resolveServiceName extracts the service name from arguments or auto-detects from package.json in cwd.
+func resolveServiceName(args []string) string {
+	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+		return strings.TrimSpace(args[0])
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		pkgPath := filepath.Join(cwd, "package.json")
+		if data, err := os.ReadFile(pkgPath); err == nil {
+			var pkg PackageJSON
+			if err := json.Unmarshal(data, &pkg); err == nil && pkg.Name != "" {
+				reg := regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
+				name := reg.ReplaceAllString(strings.ToLower(pkg.Name), "-")
+				return strings.Trim(name, "-")
+			}
+		}
+		return filepath.Base(cwd)
+	}
+	return "xypriss-app"
+}
+
+// StartService starts the given service via systemctl.
+func StartService(args []string) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+	logger.Info(fmt.Sprintf("Starting service '%s'...", name))
+	if out, err := exec.Command("systemctl", "start", serviceName).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to start %s:\n%s", name, string(out))
+	}
+	logger.Success(fmt.Sprintf("✓ Service '%s' started.", name))
+	return nil
+}
+
+// StopService stops the given service via systemctl.
+func StopService(args []string) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+	logger.Info(fmt.Sprintf("Stopping service '%s'...", name))
+	if out, err := exec.Command("systemctl", "stop", serviceName).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to stop %s:\n%s", name, string(out))
+	}
+	logger.Success(fmt.Sprintf("✓ Service '%s' stopped.", name))
+	return nil
+}
+
+// RestartService restarts the given service via systemctl.
+func RestartService(args []string) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+	logger.Info(fmt.Sprintf("Restarting service '%s'...", name))
+	if out, err := exec.Command("systemctl", "restart", serviceName).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to restart %s:\n%s", name, string(out))
+	}
+	logger.Success(fmt.Sprintf("✓ Service '%s' restarted.", name))
+	return nil
+}
+
+// StatusService displays unified status for the application and Nginx.
+func StatusService(args []string) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+
+	logger.Step(fmt.Sprintf("=== XyNginC Service Status: %s ===\n", name))
+
+	// Check if unit exists
+	unitPath := filepath.Join("/etc/systemd/system", serviceName)
+	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
+		logger.Warning(fmt.Sprintf("⚠️  Service '%s' is not installed (/etc/systemd/system/%s not found)", name, serviceName))
+		logger.Info("   Run 'sudo xynginc service install' to configure it.")
+		return nil
+	}
+
+	// Show systemctl status
+	cmd := exec.Command("systemctl", "status", serviceName, "--no-pager")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	_ = cmd.Run()
+
+	fmt.Println("\n--- Reverse Proxy Status ---")
+	nginxCmd := exec.Command("systemctl", "is-active", "nginx")
+	if out, err := nginxCmd.CombinedOutput(); err == nil {
+		logger.Success(fmt.Sprintf("Nginx Service : %s", strings.TrimSpace(string(out))))
+	} else {
+		logger.Error(fmt.Sprintf("Nginx Service : %s", strings.TrimSpace(string(out))))
+	}
+
+	return nil
+}
+
+// LogsService streams journalctl logs for the service.
+func LogsService(args []string, follow bool, lines int) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+
+	if lines <= 0 {
+		lines = 50
+	}
+
+	journalArgs := []string{"-u", serviceName, "-n", strconv.Itoa(lines), "--no-pager"}
+	if follow {
+		journalArgs = append(journalArgs, "-f")
+	}
+
+	logger.Info(fmt.Sprintf("Streaming logs for '%s' (Ctrl+C to exit)...\n", name))
+
+	cmd := exec.Command("journalctl", journalArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	return cmd.Run()
+}
+
+// UninstallService stops, disables, and removes the systemd unit.
+func UninstallService(args []string) error {
+	name := resolveServiceName(args)
+	serviceName := fmt.Sprintf("%s.service", name)
+	unitPath := filepath.Join("/etc/systemd/system", serviceName)
+
+	logger.Step(fmt.Sprintf("> Removing systemd service '%s'...\n", name))
+
+	// Stop
+	_ = exec.Command("systemctl", "stop", serviceName).Run()
+	// Disable
+	_ = exec.Command("systemctl", "disable", serviceName).Run()
+
+	// Remove file
+	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove %s: %w", unitPath, err)
+	}
+
+	// Reload daemon
+	_ = exec.Command("systemctl", "daemon-reload").Run()
+	_ = exec.Command("systemctl", "reset-failed").Run()
+
+	logger.Success(fmt.Sprintf("✓ Service '%s' successfully uninstalled.", name))
+	return nil
+}
