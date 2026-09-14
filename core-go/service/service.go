@@ -576,32 +576,35 @@ func ListServices() error {
 	}
 
 	// Print aligned header
-	fmt.Printf("  %-18s %-20s %-8s %-12s %-10s %s\n", "NAME", "STATUS", "PID", "MEMORY", "USER", "DIRECTORY")
-	fmt.Printf("  %-18s %-20s %-8s %-12s %-10s %s\n", "----", "------", "---", "------", "----", "---------")
+	fmt.Printf("  %-18s %-22s %-8s %-12s %-10s %s\n", "NAME", "STATUS", "PID", "MEMORY", "USER", "DIRECTORY")
+	fmt.Printf("  %-18s %-22s %-8s %-12s %-10s %s\n", "----", "------", "---", "------", "----", "---------")
+
+	padRight := func(str string, length int) string {
+		if len(str) >= length {
+			return str
+		}
+		return str + strings.Repeat(" ", length-len(str))
+	}
 
 	for _, s := range services {
-		var statusStr string
-		if s.ActiveState == "active" && s.SubState == "running" {
-			statusStr = greenBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
-		} else if s.ActiveState == "failed" || s.SubState == "failed" {
-			statusStr = redBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
-		} else if s.ActiveState == "activating" {
-			statusStr = yellowBold(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
-		} else {
-			statusStr = dimGray(fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState))
-		}
+		nameCol := cyanBold(padRight(s.Name, 18))
 
-		// Calculate visual padding accounting for ANSI codes
 		rawStatus := fmt.Sprintf("%s (%s)", s.ActiveState, s.SubState)
-		padding := 20 - len(rawStatus)
-		if padding < 0 {
-			padding = 0
+		paddedStatus := padRight(rawStatus, 22)
+		var statusCol string
+		if s.ActiveState == "active" && s.SubState == "running" {
+			statusCol = greenBold(paddedStatus)
+		} else if s.ActiveState == "failed" || s.SubState == "failed" {
+			statusCol = redBold(paddedStatus)
+		} else if s.ActiveState == "activating" {
+			statusCol = yellowBold(paddedStatus)
+		} else {
+			statusCol = dimGray(paddedStatus)
 		}
 
-		fmt.Printf("  %-18s %s%s %-8s %-12s %-10s %s\n",
-			cyanBold(s.Name),
-			statusStr,
-			strings.Repeat(" ", padding),
+		fmt.Printf("  %s %s %-8s %-12s %-10s %s\n",
+			nameCol,
+			statusCol,
 			s.PID,
 			s.Memory,
 			s.User,
