@@ -8,6 +8,7 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
+    "bin",
     "scripts",
     "README.md",
     "xypriss.plugin.xsig",
