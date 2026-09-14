@@ -15,7 +15,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "xynginc",
-	Version: "go-ed-1.1.13",
+	Version: "go-ed-1.1.14",
 	Short:   "XyPriss Nginx Controller - Simplified Nginx and SSL management",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Read-only commands do not require root
@@ -222,11 +222,12 @@ func init() {
 		Short: "Manage persistent systemd background service for XyPriss applications",
 	}
 
-	// service install
+	// service deploy
 	var srvName, srvRuntime, srvEntrypoint, srvUser, srvEnvFile string
-	var cmdServiceInstall = &cobra.Command{
-		Use:   "install [service-name]",
-		Short: "Auto-detect project, generate systemd service, and start it",
+	var cmdServiceDeploy = &cobra.Command{
+		Use:     "deploy [service-name]",
+		Aliases: []string{"install"},
+		Short:   "Auto-detect project, generate systemd service, and start it",
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 && srvName == "" {
 				srvName = args[0]
@@ -237,12 +238,12 @@ func init() {
 			}
 		},
 	}
-	cmdServiceInstall.Flags().StringVarP(&srvName, "name", "n", "", "Custom service name (default: from package.json)")
-	cmdServiceInstall.Flags().StringVarP(&srvRuntime, "runtime", "r", "", "Path to runtime executable (bun or node)")
-	cmdServiceInstall.Flags().StringVarP(&srvEntrypoint, "entrypoint", "e", "", "Path to entrypoint (e.g. src/server.ts)")
-	cmdServiceInstall.Flags().StringVarP(&srvUser, "user", "u", "", "Linux user to execute service (default: owner/SUDO_USER)")
-	cmdServiceInstall.Flags().StringVar(&srvEnvFile, "env-file", "", "Path to .env file to inject into service")
-	cmdService.AddCommand(cmdServiceInstall)
+	cmdServiceDeploy.Flags().StringVarP(&srvName, "name", "n", "", "Custom service name (default: from package.json)")
+	cmdServiceDeploy.Flags().StringVarP(&srvRuntime, "runtime", "r", "", "Path to runtime executable (bun or node)")
+	cmdServiceDeploy.Flags().StringVarP(&srvEntrypoint, "entrypoint", "e", "", "Path to entrypoint (e.g. src/server.ts)")
+	cmdServiceDeploy.Flags().StringVarP(&srvUser, "user", "u", "", "Linux user to execute service (default: owner/SUDO_USER)")
+	cmdServiceDeploy.Flags().StringVar(&srvEnvFile, "env-file", "", "Path to .env file to inject into service")
+	cmdService.AddCommand(cmdServiceDeploy)
 
 	// service start
 	var cmdServiceStart = &cobra.Command{
@@ -370,6 +371,28 @@ func init() {
 	cmdLogs.Flags().BoolVarP(&srvLogsFollow, "follow", "f", true, "Follow log stream in real time")
 	cmdLogs.Flags().IntVarP(&srvLogsLines, "lines", "n", 50, "Number of recent log lines to display")
 	rootCmd.AddCommand(cmdLogs)
+
+	// deploy shortcut at root
+	var rootDeployName, rootDeployRuntime, rootDeployEntrypoint, rootDeployUser, rootDeployEnvFile string
+	var cmdRootDeploy = &cobra.Command{
+		Use:   "deploy [service-name]",
+		Short: "Auto-detect project, generate systemd service, and start it (shortcut for 'service deploy')",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) > 0 && rootDeployName == "" {
+				rootDeployName = args[0]
+			}
+			if err := service.InstallService(rootDeployName, rootDeployRuntime, rootDeployEntrypoint, rootDeployUser, rootDeployEnvFile); err != nil {
+				logger.Error(fmt.Sprintf("❌ Error: %v", err))
+				os.Exit(1)
+			}
+		},
+	}
+	cmdRootDeploy.Flags().StringVarP(&rootDeployName, "name", "n", "", "Custom service name (default: from package.json)")
+	cmdRootDeploy.Flags().StringVarP(&rootDeployRuntime, "runtime", "r", "", "Path to runtime executable (bun or node)")
+	cmdRootDeploy.Flags().StringVarP(&rootDeployEntrypoint, "entrypoint", "e", "", "Path to entrypoint (e.g. src/server.ts)")
+	cmdRootDeploy.Flags().StringVarP(&rootDeployUser, "user", "u", "", "Linux user to execute service (default: owner/SUDO_USER)")
+	cmdRootDeploy.Flags().StringVar(&rootDeployEnvFile, "env-file", "", "Path to .env file to inject into service")
+	rootCmd.AddCommand(cmdRootDeploy)
 }
 
 func main() {

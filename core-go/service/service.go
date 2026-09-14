@@ -13,9 +13,11 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/fatih/color"
 
+	"xynginc/check"
 	"xynginc/logger"
 )
 
@@ -165,6 +167,16 @@ func AutoDetectServiceInfo(customName, customRuntime, customEntrypoint, customUs
 
 // InstallService generates and enables a production-grade systemd service for the current project.
 func InstallService(customName, customRuntime, customEntrypoint, customUser, customEnvFile string) error {
+	// 0. Pre-flight requirements check (nginx, certbot, modules)
+	logger.Step("> Verifying reverse-proxy requirements...\n")
+	if err := check.CheckRequirements(); err != nil {
+		logger.Warning(fmt.Sprintf("⚠️  Some requirements are missing: %v", err))
+		logger.Info("   Installing missing system requirements...")
+		if err := check.InteractiveInstall(); err != nil {
+			return fmt.Errorf("failed to install missing requirements: %w", err)
+		}
+	}
+
 	name, runtime, entrypoint, runUser, envFile, cwd, err := AutoDetectServiceInfo(
 		customName, customRuntime, customEntrypoint, customUser, customEnvFile,
 	)
@@ -175,7 +187,7 @@ func InstallService(customName, customRuntime, customEntrypoint, customUser, cus
 	serviceFileName := fmt.Sprintf("%s.service", name)
 	serviceFilePath := filepath.Join("/etc/systemd/system", serviceFileName)
 
-	logger.Step(fmt.Sprintf("> Configuring systemd service '%s'...\n", name))
+	logger.Step(fmt.Sprintf("\n> Configuring systemd service '%s'...\n", name))
 	fmt.Printf("   Project Name : %s\n", name)
 	fmt.Printf("   Working Dir  : %s\n", cwd)
 	fmt.Printf("   Runtime      : %s\n", runtime)
@@ -238,7 +250,28 @@ WantedBy=multi-user.target
 		return fmt.Errorf("systemctl restart %s failed: %s", serviceFileName, string(out))
 	}
 
-	logger.Success(fmt.Sprintf("\n🎉 Service '%s' is now running in background and enabled on boot!", name))
+	// Health check: verify service actually remains active
+	logger.Info("   → Verifying service status...")
+	time.Sleep(1500 * time.Millisecond)
+
+	statusOut, _ := exec.Command("systemctl", "is-active", serviceFileName).CombinedOutput()
+	status := strings.TrimSpace(string(statusOut))
+
+	if status != "active" {
+		logger.Error(fmt.Sprintf("\n❌ Service '%s' failed to start or crashed immediately (status: %s)", name, status))
+		logger.Info("\n> Recent service logs (journalctl):")
+		fmt.Println("──────────────────────────────────────────────────")
+		logOut, _ := exec.Command("journalctl", "-u", serviceFileName, "-n", "20", "--no-pager").CombinedOutput()
+		fmt.Println(strings.TrimSpace(string(logOut)))
+		fmt.Println("──────────────────────────────────────────────────")
+		return fmt.Errorf("service '%s' entered '%s' state after launch. See logs above for details", name, status)
+	}
+
+	pidOut, _ := exec.Command("systemctl", "show", "-p", "MainPID", "--value", serviceFileName).CombinedOutput()
+	pid := strings.TrimSpace(string(pidOut))
+
+	logger.Success(fmt.Sprintf("\n✓ Service is healthy and active (PID: %s)", pid))
+	logger.Success(fmt.Sprintf("🎉 Service '%s' is now running in background and enabled on boot!", name))
 	fmt.Println("\nHelpful commands:")
 	fmt.Printf("   • Check status : xynginc service status %s\n", name)
 	fmt.Printf("   • Follow logs  : xynginc service logs %s -f\n", name)
@@ -315,7 +348,7 @@ func StatusService(args []string) error {
 	unitPath := filepath.Join("/etc/systemd/system", serviceName)
 	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
 		logger.Warning(fmt.Sprintf("⚠️  Service '%s' is not installed (/etc/systemd/system/%s not found)", name, serviceName))
-		logger.Info("   Run 'sudo xynginc service install' to configure it.")
+		logger.Info("   Run 'sudo xynginc service deploy' (or 'sudo xynginc deploy') to configure it.")
 		return nil
 	}
 
@@ -571,7 +604,7 @@ func ListServices() error {
 
 	if len(services) == 0 {
 		fmt.Println("  No background services currently managed by XyNginC.")
-		fmt.Println("  Run 'sudo xynginc service install' inside your project directory to register one.\n")
+		fmt.Println("  Run 'sudo xynginc service deploy' inside your project directory to register one.\n")
 		return nil
 	}
 

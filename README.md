@@ -114,7 +114,7 @@ XyNginC includes dedicated systemd management commands to ensure persistent exec
 From the root directory of your project:
 
 ```bash
-sudo xfpmx xncp service install
+sudo xfpmx xncp service deploy   # or: sudo xfpmx xncp deploy
 ```
 
 The installer automatically:
@@ -159,7 +159,7 @@ sudo xynginc check                     # Verify system dependencies
 sudo xynginc install                   # Install missing system requirements
 
 # Service Supervision
-sudo xynginc service install [name]    # Provision and start systemd service
+sudo xynginc service deploy [name]     # Provision and start systemd service (or: sudo xynginc deploy)
 xynginc service list                   # List all managed background services (alias: services)
 sudo xynginc service start [name]      # Start managed service
 sudo xynginc service stop [name]       # Stop managed service
@@ -169,6 +169,7 @@ xynginc service logs [name] -f         # Stream live service logs
 sudo xynginc service uninstall [name]  # Remove service unit
 
 # Direct Aliases
+xynginc deploy                         # Deploy current project as systemd service
 xynginc services                       # List all background services
 xynginc logs -f                        # Stream logs of default service
 
@@ -184,7 +185,7 @@ sudo xynginc clean                     # Purge conflicting or broken virtual hos
 sudo xynginc restore <backup_id>       # Revert to a previous configuration backup
 ```
 
-### Options for `service install`
+### Options for `service deploy` (or `deploy`)
 
 | Parameter | Alias | Description | Default |
 |---|---|---|---|
