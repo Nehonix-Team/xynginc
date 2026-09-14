@@ -14,7 +14,8 @@
     "xypriss.config.jsonc"
   ],
   "bin": {
-    "xynginc": "./bin/xynginc"
+    "xynginc": "./bin/xynginc",
+    "xynginc": "./bin/xynginc",
   },
   "engines": {
     "node": ">=18.0.0"
