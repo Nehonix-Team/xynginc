@@ -129,6 +129,9 @@ The installer automatically:
 ### Service Operations
 
 ```bash
+# List all services managed by XyNginC
+xfpmx xncp service list               # or: xfpmx xncp services
+
 # Display service status and Nginx health
 xfpmx xncp service status [service-name]
 
@@ -157,6 +160,7 @@ sudo xynginc install                   # Install missing system requirements
 
 # Service Supervision
 sudo xynginc service install [name]    # Provision and start systemd service
+xynginc service list                   # List all managed background services (alias: services)
 sudo xynginc service start [name]      # Start managed service
 sudo xynginc service stop [name]       # Stop managed service
 sudo xynginc service restart [name]    # Restart managed service
@@ -164,8 +168,9 @@ xynginc service status [name]          # Inspect unit status and reverse proxy s
 xynginc service logs [name] -f         # Stream live service logs
 sudo xynginc service uninstall [name]  # Remove service unit
 
-# Direct Log Streaming Alias
-xynginc logs -f
+# Direct Aliases
+xynginc services                       # List all background services
+xynginc logs -f                        # Stream logs of default service
 
 # Virtual Host Management
 sudo xynginc add --domain example.com --port 8080 --ssl --email ops@example.com
