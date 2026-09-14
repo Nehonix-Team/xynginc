@@ -136,12 +136,12 @@ export async function startXNCPlugin(
             );
             if (!recheckOk) {
               throw new Error(
-                "[XyNginC] System requirements installation failed or was incomplete. Please run 'sudo xynginc install' manually.",
+                "[XyNginC] System requirements installation failed or was incomplete. Please run 'sudo  xfpmx xynginc deploy' manually.",
               );
             }
           } else if (!requirementsOk) {
             throw new Error(
-              "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",
+              "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xfpmx  xynginc deploy",
             );
           }
 
@@ -167,7 +167,9 @@ export async function startXNCPlugin(
         activeInitPromise = null;
       }
     } else {
-      Logger.info("[XyNginC] Configuration already applied for this multi-server group.");
+      Logger.info(
+        "[XyNginC] Configuration already applied for this multi-server group.",
+      );
     }
 
     // Expose CLI helper methods on server
