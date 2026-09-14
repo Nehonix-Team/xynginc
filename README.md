@@ -1,65 +1,54 @@
-# XyNginC
+# XyNginC (XNCP)
 
-This project uses code developed by NEHONIX (www.nehonix.com) under the NEHONIX Open Source License (NOSL) v1.0.
+> **XyPriss Nginx Controller** — Automated Nginx reverse proxy, automated Let's Encrypt SSL, and production systemd background service management for the XyPriss ecosystem.
 
-XyPriss Nginx Controller – Simplifies Nginx and SSL management.
-
-[![xfpm version](https://badge.fury.io/js/%40xypriss%2Fxynginc.svg)](https://www.npmjs.com/package/xynginc)
+[![xfpm version](https://badge.fury.io/js/xynginc.svg)](https://www.npmjs.com/package/xynginc)
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
+[![Go Core](https://img.shields.io/badge/Go%20Core-go--ed--1.1.9-00ADD8?logo=go&logoColor=white)](https://github.com/Nehonix-Team/xynginc/releases)
 
-## Overview
+---
 
-XyNginC (XyPriss Nginx Controller) automates Nginx reverse proxy configuration, SSL certificate management, and provides optimized, production-ready configs for security, performance, and best practices. It eliminates manual Nginx editing, simplifying XyPriss deployment to just a few lines of TypeScript. Check out the [demo project on GitHub](https://github.com/iDevo-ll/XYNC-Demo).
+## 🌟 Overview
+
+**XyNginC** transforms complex Linux server deployment into a unified, developer-friendly experience. Built with a **high-performance native Go core** and a **Zero-Trust TypeScript plugin**, XyNginC handles:
+1. **Automated Reverse Proxy**: Maps your domains to local ports seamlessly.
+2. **Instant SSL/TLS**: Automatic Let's Encrypt certificate acquisition & renewal via Certbot.
+3. **Production-Hardened Nginx**: Zero manual config files — downloads and applies security-hardened templates (OWASP & CIS benchmarks, HTTP/2, custom security headers with `headers-more`).
+4. **Resilient Background Service (`systemd`)**: Run your XyPriss server 24/7 as an auto-restarting systemd service with automatic reboot recovery and real-time log streaming.
 
 > [!IMPORTANT]
-> XyNginC is a plugin **exclusively designed for XyPriss projects**. It is not intended for use outside the XyPriss ecosystem, in development environments, or on non-Linux systems. For the best integration experience, **XFPM** (XyPriss Fast Package Manager) is required — see [Installation](#installation).
+> XyNginC is designed for **Linux production servers** (Ubuntu/Debian VPS or Dedicated servers) running the **XyPriss** ecosystem with **Bun** or **Node.js**. Supported architectures: **x64**, **arm64**, and **ia32**.
 
-> [!CAUTION]
-> XyNginC only runs on **Linux production servers** (VPS or Dedicated). Supported architectures: **x64**, **arm64**, and **ia32**. Windows and macOS are not supported.
+---
 
-## Key Features
+## 🚀 Key Features
 
-- **Automated Reverse Proxy**: Maps domains to local ports seamlessly.
-- **One-Command SSL**: Integrated Let's Encrypt and Certbot support for automatic HTTPS.
-- **Automatic Nginx Reload**: Applies configuration changes without manual service restarts.
-- **Multi-Domain Support**: Manages multiple domains and subdomains within a single configuration.
-- **Optimized Configuration**: Generates production-ready Nginx configuration files via dynamic GitHub template fetching.
-- **High Performance**: Core logic executed via a Go-based CLI for speed and reliability.
-- **Type Safety**: Full TypeScript support with comprehensive type definitions.
+- 🔒 **Automated HTTPS & SSL**: Full Let's Encrypt integration with automated challenge resolution and renewals.
+- ⚡ **Native Go Engine**: System-level commands, JSON parsing, and firewall manipulations are executed with microsecond Go performance.
+- 🔄 **Managed Systemd Services**: One-command background deployment with automatic restart on crash or server reboot (`xynginc service install`).
+- 🛡️ **Headers-More & Stealth**: Automatically hides server signatures and applies `Server: NEHONIX/XNCP` via `libnginx-mod-http-headers-more-filter`.
+- 📁 **Non-Intrusive & Signed**: Cryptographically signed with `xypriss.plugin.xsig` under XyPriss Zero-Trust specifications.
+- 🏢 **Multi-Server & Multi-Tenant Support**: Deduplicates configuration execution when hosting multiple XyPriss apps on the same machine.
+- 🧱 **Automated Firewall Setup**: Automatically checks and configures UFW rules for ports `80` and `443`.
 
-## Installation
+---
 
-For detailed installation instructions, please refer to the [Installation Guide](docs/INSTALLATION.md).
-For building from source (custom architectures), see the [Build Guide](docs/BUILD_FROM_SOURCE.md).
+## 📦 Installation
 
-XyNginC is exclusively designed for **XyPriss projects running in production on Linux**. We strongly recommend using Ubuntu on a Virtual Private Server (VPS) for the best security and stability.
-
-### Prerequisites
-
-Before installing XyNginC, you need **XFPM** — the official package manager for the XyPriss ecosystem.
+In accordance with XyPriss standards, always use the **XFPM** package manager:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Nehonix-Team/XFPM/master/scripts/install.sh | sudo bash
-```
-
-```bash
-xfpm --version
-```
-
-### Install XyNginC
-
-```bash
+# Install XyNginC in your XyPriss project
 xfpm install xynginc
 ```
 
-> [!NOTE]
-> The installation requires `sudo` privileges to place the binary in `/usr/local/bin` and configure system permissions.
+The package provides two CLI binaries: `xynginc` and `xncp`.
 
-## Quick Start
+---
 
-### Basic Configuration
+## 🛠️ Quick Start
 
-Integrate XyNginC into your XyPriss server:
+### 1. Register the Plugin in your XyPriss Server
 
 ```typescript
 import { createServer } from "xypriss";
@@ -72,11 +61,26 @@ const app = createServer({
         domains: [
           {
             domain: "api.example.com",
-            port: 3000,
+            port: 8088,
+            ssl: true,
+            email: "admin@example.com",
+            maxBodySize: "20M", // Optional, defaults to "10M"
+          },
+          {
+            domain: "auth.example.com",
+            port: 8089,
             ssl: true,
             email: "admin@example.com",
           },
         ],
+        // Automatically install Nginx, Certbot, and headers-more if missing
+        installRequirements: true,
+        // Automatically reload Nginx after config generation
+        autoReload: true,
+        // Automatically open ports 80 & 443 in UFW if enabled
+        autoFixFirewall: true,
+        // Sudo password for background/non-interactive execution
+        sudoPassword: process.env.SUDO_PASSWORD,
       }),
     ],
   },
@@ -85,249 +89,191 @@ const app = createServer({
 app.start();
 ```
 
-### Multiple Domains Configuration
+---
 
-Configure multiple environments or services simultaneously:
+## 🖥️ Systemd Service Management (Production DX)
 
-```typescript
-XNCP({
-  domains: [
-    {
-      domain: "api.example.com",
-      port: 3000,
-      ssl: true,
-      email: "admin@example.com",
-    },
-    {
-      domain: "admin.example.com",
-      port: 3001,
-      ssl: true,
-      email: "admin@example.com",
-    },
-    {
-      domain: "dev.example.com",
-      port: 3002,
-      ssl: false,
-    },
-  ],
-  autoReload: true,
-});
+XyNginC provides a complete, zero-config CLI suite to turn any XyPriss app into a resilient, auto-restarting background Linux service.
+
+You can run these commands directly or via `xfpmx`:
+
+```bash
+# Install & start the current project as a background service
+sudo xfpmx xncp service install
+
+# Check service and Nginx status in a single unified dashboard
+xfpmx xncp service status
+
+# Stream application logs live (no sudo needed!)
+xfpmx xncp logs -f
+
+# Restart or stop the background service
+sudo xfpmx xncp service restart
+sudo xfpmx xncp service stop
+
+# Completely remove the service
+sudo xfpmx xncp service uninstall
 ```
 
-### Dynamic Management
+### What `service install` does automatically:
+1. **Detects Runtime**: Automatically locates your runtime (`/home/user/.xfpm/bin/bun`, `bun`, or `node`).
+2. **Detects Entrypoint**: Inspects `src/server.ts`, `server.ts`, `dist/index.js`, or `package.json#main`.
+3. **Detects Environment**: Automatically injects your `.env` file (`EnvironmentFile`).
+4. **Secures User Permissions**: Configures the service under your Linux user (e.g. `ubuntu`) rather than `root`.
+5. **Enforces Production Limits**: Injects `LimitNOFILE=65535` and `Restart=always` with a 5-second backoff.
+6. **Enables Boot Startup**: Runs `systemctl daemon-reload && systemctl enable --now <service>`.
 
-Manage domains programmatically at runtime:
+---
 
-```typescript
-app.start(async () => {
-  // Add a new domain
-  await app.xynginc.addDomain(
-    "new.example.com",
-    4000,
-    true,
-    "admin@example.com",
-  );
+## 💻 CLI Reference
 
-  // List configured domains
-  const domains = await app.xynginc.listDomains();
-  console.log("Configured domains:", domains);
+You can invoke XyNginC through `xynginc`, `xncp`, or via `xfpmx`:
 
-  // Validate XCNP configuration
-  const isValid = await app.xynginc.test();
+```bash
+# Check system requirements (nginx, certbot, headers-more)
+sudo xynginc check
 
-  // Reload XyNginC service
-  await app.xynginc.reload();
+# Install all missing requirements non-interactively
+sudo xynginc install
 
-  // Remove a domain
-  await app.xynginc.removeDomain("old.example.com");
-});
+# Service lifecycle management
+sudo xynginc service install [service-name] [flags]
+sudo xynginc service start [service-name]
+sudo xynginc service stop [service-name]
+sudo xynginc service restart [service-name]
+xynginc service status [service-name]
+xynginc service logs [service-name] [-f] [-n 50]
+sudo xynginc service uninstall [service-name]
+
+# Direct log streaming shortcut
+xynginc logs -f
+
+# Manual domain management
+sudo xynginc add --domain api.example.com --port 8080 --ssl --email admin@example.com
+sudo xynginc remove api.example.com
+sudo xynginc list
+
+# Nginx config testing and reload
+sudo xynginc test
+sudo xynginc reload
+
+# Clean up broken or stale configurations
+sudo xynginc clean
+
+# Restore from backup
+sudo xynginc restore <backup_id>
 ```
 
-## API Reference
+### `service install` Flags:
+| Flag | Short | Description | Default |
+|---|---|---|---|
+| `--name` | `-n` | Custom service name | Inferred from `package.json` |
+| `--runtime` | `-r` | Path to runtime binary | Inferred (`bun` / `node`) |
+| `--entrypoint` | `-e` | Path to app entrypoint | Inferred (`src/server.ts`...) |
+| `--user` | `-u` | System execution user | `SUDO_USER` / current user |
+| `--env-file` | | Path to `.env` file | Auto-detected `.env` in cwd |
 
-### Plugin Options
+---
+
+## ⚙️ Plugin Options Reference
 
 ```typescript
 interface XyNginCPluginOptions {
-  /** List of domains to configure */
+  /** List of domains to reverse-proxy */
   domains: Array<{
-    domain: string; // Domain name (e.g., api.example.com)
-    port: number; // Local port to proxy (e.g., 3000)
-    ssl?: boolean; // Enable SSL via Let's Encrypt
-    email?: string; // Email for Let's Encrypt registration (required if ssl=true)
+    domain: string;           // Domain or subdomain (e.g. "api.example.com")
+    port: number;             // Local target port (e.g. 8088)
+    ssl?: boolean;            // Enable Let's Encrypt SSL (default: false)
+    email?: string;           // Contact email for Let's Encrypt (required if ssl=true)
+    maxBodySize?: string;     // Client max upload size, e.g. "20M" (default: "10M")
   }>;
 
-  /** Automatically reload Nginx after configuration changes (default: true) */
-  autoReload?: boolean;
+  /** Automatically install missing dependencies (nginx, certbot, headers-more) */
+  installRequirements?: boolean; // (default: false)
 
-  /** Custom path to the xynginc binary - recommended */
+  /** Automatically reload Nginx after configuration updates */
+  autoReload?: boolean;          // (default: true)
+
+  /** Automatically open ports 80 and 443 in UFW if firewall is active */
+  autoFixFirewall?: boolean;     // (default: false)
+
+  /** Sudo password for headless / background execution */
+  sudoPassword?: string;         // (can also use env SUDO_PASSWORD)
+
+  /** Custom path to the xynginc Go binary */
   binaryPath?: string;
 
-  /** Automatically download the binary if missing (default: true) */
-  autoDownload?: boolean;
+  /** Auto-download binary from GitHub releases if missing */
+  autoDownload?: boolean;        // (default: true)
 
-  /** Specific GitHub release version to download (default: "latest") */
-  version?: string;
-
-  /** Password to execute sudo commands silently in background environments like PM2 */
-  sudoPassword?: string;
-
-  /** Automatically open Port 80 and 443 in the firewall (UFW) if they are blocked (default: false) */
-  autoFixFirewall?: boolean;
+  /** Specific Go core release tag to download */
+  version?: string;             // (default: "latest")
 }
 ```
 
-### Server Methods
+---
 
-The following methods are exposed on `server.xynginc` after the plugin is registered:
+## 🔧 Runtime Programmatic API
+
+When the plugin is registered, the following methods are accessible via `server.xynginc`:
 
 ```typescript
-// Add a domain configuration
+// Add a domain configuration at runtime
 await server.xynginc.addDomain(
   domain: string,
   port: number,
-  ssl: boolean,
-  email?: string
-): Promise<void>
+  ssl?: boolean,
+  email?: string,
+  maxBodySize?: string
+): Promise<void>;
 
 // Remove a domain configuration
-await server.xynginc.removeDomain(domain: string): Promise<void>
+await server.xynginc.removeDomain(domain: string): Promise<void>;
 
-// List all configured domains
-await server.xynginc.listDomains(): Promise<string[]>
+// List all active domains
+const domains = await server.xynginc.listDomains(): Promise<string[]>;
 
-// Reload XyNginC service
-await server.xynginc.reload(): Promise<void>
+// Test Nginx configuration validity
+const ok = await server.xynginc.test(): Promise<boolean>;
 
-// Test XyNginC configuration validity
-await server.xynginc.test(): Promise<boolean>
+// Reload Nginx service
+await server.xynginc.reload(): Promise<void>;
 
-// Get status of managed sites
-await server.xynginc.status(): Promise<string>
+// Get status summary
+const status = await server.xynginc.status(): Promise<string>;
 ```
 
-## CLI Usage
+---
 
-The `xynginc` command-line interface allows for direct management without the XyPriss application context.
+## 🏗️ Architecture
 
-```bash
-# Check prerequisites
-sudo xynginc check
+XyNginC operates on a high-efficiency 3-tier architecture:
 
-# Add a domain
-sudo xynginc add --domain api.example.com --port 3000 --ssl --email admin@example.com
-
-# List domains
-sudo xynginc list
-
-# Apply configuration from a JSON file
-sudo xynginc apply --config config.json
-
-# Test Nginx configuration
-sudo xynginc test
-
-# Reload Nginx
-sudo xynginc reload
-
-# Remove a domain
-sudo xynginc remove api.example.com
-
-# View status
-sudo xynginc status
+```mermaid
+graph TD
+    A[XyPriss App Server] -->|TypeScript API / Zero-Trust| B(XyNginC Plugin Wrapper)
+    B -->|Encrypted temporary config / tmpfs| C(XyNginC Go Core Binary)
+    C -->|Systemctl & APT| D[Nginx Reverse Proxy & Headers-More]
+    C -->|Certbot API| E[Let's Encrypt SSL Certificates]
+    C -->|Systemd Service API| F[Linux Systemd Daemon]
 ```
 
-### Configuration File Example
+1. **XyPriss Application**: Your server logic running under Bun or Node.js.
+2. **TypeScript Plugin**: Validates configurations, prevents redundant executions in multi-server architectures, and bridges safely with host privileges.
+3. **Go Core (`core-go`)**: A statically compiled Go binary that manipulates Nginx configurations, interfaces with Certbot, configures UFW firewall rules, and registers systemd services.
 
-```json
-{
-  "domains": [
-    {
-      "domain": "api.example.com",
-      "port": 3000,
-      "ssl": true,
-      "email": "admin@example.com"
-    }
-  ],
-  "auto_reload": true,
-  "autofix_firewall": true
-}
-```
+---
 
-## Architecture
+## 🛡️ Security & Hardening
 
-The system operates through a three-tier architecture:
+- **Privilege Separation**: Application processes run under standard user accounts (`ubuntu`, etc.), while system operations use controlled `sudo` escalation only when needed.
+- **Header Obfuscation**: The `headers-more` module automatically clears `Server` headers and presents `Server: NEHONIX/XNCP` to disguise backend technologies.
+- **Config Isolation**: Configuration data is piped via secure temporary files (`/tmp/.xynginc-config-*.json`) that are immediately shredded after application to prevent password leaks.
+- **Cryptographic Signing**: Packaged with a valid `xypriss.plugin.xsig` signature for XyPriss Zero-Trust integrity validation.
 
-1. **XyPriss Application**: The XyPriss application running the server.
-2. **XyNginC Plugin**: A TypeScript wrapper that interfaces with the application and executes the underlying Go binary.
-3. **XyNginC Go Binary**: A high-performance Go-based CLI tool that performs system-level operations (Nginx configuration, Certbot execution). It dynamically fetches the latest config templates from GitHub (`Nehonix-Team/xynginc`) to guarantee up-to-date and optimized Nginx setups.
+---
 
-## Security Considerations
+## 📜 License
 
-XyNginC requires elevated privileges to perform the following actions:
-
-- Writing to `/etc/nginx/sites-available/`
-- Creating symbolic links in `/etc/nginx/sites-enabled/`
-- Executing `certbot` for SSL certificate generation
-- Reloading the Nginx service
-
-> [!WARNING]
-> XyNginC requires elevated privileges to manage Nginx and firewall rules. Always review the commands being executed and restrict sudo access to only what is necessary.
-
-- **Sudoers**: We recommend configuring `sudoers` to allow specific commands for the user.
-- **Sudo Password**: If your application runs in the background (e.g. using PM2), you can use the `sudoPassword` option or the `SUDO_PASSWORD` environment variable.
-  - **Reassurance**: The password is used **only** to execute the local `xynginc` binary and system commands like `ufw` or `service`. It is never stored, logged, or transmitted outside of your server.
-- **Firewall**: The `autoFixFirewall` option allows XyNginC to automatically detect and open Port 80/443 if `ufw` is active. This is useful for automated SSL validation.
-
-## Troubleshooting
-
-### Binary Not Found
-
-If the binary fails to download automatically:
-
-```bash
-# Manually trigger with XFPM
-xfpm run postinstall
-
-# Or specify the path manually in options
-XNCP({
-  binaryPath: "/usr/local/bin/xynginc",
-  autoDownload: false,
-})
-```
-
-### Permission Denied
-
-If you encounter permission errors:
-
-```bash
-# Run with sudo
-sudo node server.js
-```
-
-### Certbot Failure
-
-If SSL generation fails:
-
-1. Verify DNS propagation: `dig api.example.com`
-2. Ensure firewall allows traffic on ports 80 and 443:
-
-```bash
-sudo ufw allow 80
-sudo ufw allow 443
-```
-
-> [!NOTE]
-> Certbot requires ports 80 and 443 to be publicly accessible for domain validation. Make sure your cloud provider's security groups also allow this traffic, not just UFW.
-
-## Contributing
-
-Contributions are welcome. Please follow the standard pull request process.
-
-1. Clone the repository
-2. Install dependencies
-3. Build the Go CLI and TypeScript package (`xfpm run build:all`)
-4. Run tests
-
-## License
-
-NOSL
+This project is licensed under the **NEHONIX Open Source License (NOSL) v1.0**.  
+Copyright © 2025-2026 [NEHONIX](https://www.nehonix.com). All rights reserved.

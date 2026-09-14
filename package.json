@@ -15,7 +15,7 @@
   ],
   "bin": {
     "xynginc": "./bin/xynginc",
-    "xynginc": "./bin/xynginc",
+    "xncp": "./bin/xynginc"
   },
   "engines": {
     "node": ">=18.0.0"
