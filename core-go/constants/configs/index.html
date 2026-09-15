@@ -1,7 +1,7 @@
 <!--
 # ============================================================================
 # Copyright © 2026 NEHONIX - www.nehonix.com
-# XyNginC Nginx Controller - Modern Gateway Index Page
+# XyNginC Nginx Controller - Modern Gateway Index Page (System Theme Aware)
 # ============================================================================
 -->
 <!doctype html>
@@ -30,10 +30,37 @@
         --accent-emerald-dim: rgba(0, 229, 160, 0.12);
         --accent-emerald-glow: rgba(0, 229, 160, 0.25);
 
-        --accent-cyan: #00f2fe;
+        --grid-color: rgba(255, 255, 255, 0.03);
+        --info-bg: rgba(255, 255, 255, 0.02);
+        --btn-sec-bg: rgba(255, 255, 255, 0.04);
+        --btn-sec-border: rgba(255, 255, 255, 0.08);
+        --card-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
         
         --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f8fafc;
+          --card-bg: rgba(255, 255, 255, 0.9);
+          --card-border: rgba(0, 0, 0, 0.08);
+          --card-border-glow: rgba(5, 150, 105, 0.25);
+          
+          --text-primary: #0f172a;
+          --text-secondary: #475569;
+          --text-muted: #94a3b8;
+          
+          --accent-emerald: #059669;
+          --accent-emerald-dim: rgba(5, 150, 105, 0.1);
+          --accent-emerald-glow: rgba(5, 150, 105, 0.2);
+
+          --grid-color: rgba(0, 0, 0, 0.04);
+          --info-bg: rgba(0, 0, 0, 0.02);
+          --btn-sec-bg: rgba(0, 0, 0, 0.04);
+          --btn-sec-border: rgba(0, 0, 0, 0.1);
+          --card-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.12);
+        }
       }
 
       html, body {
@@ -43,6 +70,7 @@
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
 
       body {
@@ -61,7 +89,7 @@
         transform: translate(-50%, -50%);
         width: 650px;
         height: 450px;
-        background: radial-gradient(circle, rgba(0, 229, 160, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+        background: radial-gradient(circle, var(--accent-emerald-glow) 0%, rgba(0, 0, 0, 0) 70%);
         pointer-events: none;
         z-index: 0;
       }
@@ -70,8 +98,8 @@
         position: fixed;
         inset: 0;
         background-image: 
-          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+          linear-gradient(var(--grid-color) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
         background-size: 40px 40px;
         pointer-events: none;
         z-index: 0;
@@ -88,10 +116,7 @@
         border: 1px solid var(--card-border);
         border-radius: 20px;
         padding: 36px 32px;
-        box-shadow: 
-          0 30px 60px -15px rgba(0, 0, 0, 0.7),
-          0 0 0 1px rgba(255, 255, 255, 0.05),
-          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        box-shadow: var(--card-shadow);
         animation: cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
@@ -106,7 +131,7 @@
         justify-content: space-between;
         margin-bottom: 32px;
         padding-bottom: 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid var(--card-border);
       }
 
       .brand {
@@ -129,7 +154,7 @@
       .brand-icon svg {
         width: 18px;
         height: 18px;
-        color: #05070a;
+        color: #ffffff;
       }
 
       .brand-title {
@@ -155,7 +180,7 @@
         padding: 5px 12px;
         font-family: var(--font-mono);
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--accent-emerald);
         letter-spacing: 0.04em;
       }
@@ -202,8 +227,8 @@
       }
 
       .info-box {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--info-bg);
+        border: 1px solid var(--card-border);
         border-radius: 12px;
         padding: 18px;
       }
@@ -252,7 +277,7 @@
 
       .btn-primary {
         background: linear-gradient(135deg, var(--accent-emerald), #059669);
-        color: #05070a;
+        color: #ffffff;
         box-shadow: 0 4px 14px var(--accent-emerald-glow);
       }
 
@@ -262,20 +287,20 @@
       }
 
       .btn-secondary {
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--btn-sec-bg);
         color: var(--text-primary);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--btn-sec-border);
       }
 
       .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--btn-sec-border);
         transform: translateY(-1px);
       }
 
       .card-footer {
         margin-top: 24px;
         padding-top: 16px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid var(--card-border);
         display: flex;
         align-items: center;
         justify-content: space-between;

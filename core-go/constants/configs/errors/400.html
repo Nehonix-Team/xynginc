@@ -1,7 +1,7 @@
 <!--
 # ============================================================================
 # Copyright © 2026 NEHONIX - www.nehonix.com
-# XyNginC Nginx Controller - Modern 404 Error Template
+# XyNginC Nginx Controller - Modern 404 Error Template (System Theme Aware)
 # ============================================================================
 -->
 <!doctype html>
@@ -17,10 +17,11 @@
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
+        /* Default: Dark Theme */
         --bg: #05070a;
         --card-bg: rgba(12, 16, 23, 0.85);
         --card-border: rgba(255, 255, 255, 0.08);
-        --card-border-glow: rgba(245, 166, 35, 0.2);
+        --card-border-glow: rgba(255, 183, 3, 0.2);
         
         --text-primary: #f0f4f8;
         --text-secondary: #8a99ad;
@@ -30,9 +31,44 @@
         --accent-amber: #ffb703;
         --accent-amber-dim: rgba(255, 183, 3, 0.12);
         --accent-amber-glow: rgba(255, 183, 3, 0.25);
+
+        --grid-color: rgba(255, 255, 255, 0.03);
+        --info-bg: rgba(255, 255, 255, 0.02);
+        --btn-sec-bg: rgba(255, 255, 255, 0.04);
+        --btn-sec-border: rgba(255, 255, 255, 0.08);
+        --card-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
+        --node-box-bg: rgba(255, 255, 255, 0.03);
+        --diagram-bg: rgba(6, 9, 14, 0.6);
         
         --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      /* Automatic Light Theme Adaptation */
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f8fafc;
+          --card-bg: rgba(255, 255, 255, 0.9);
+          --card-border: rgba(0, 0, 0, 0.08);
+          --card-border-glow: rgba(217, 119, 6, 0.25);
+          
+          --text-primary: #0f172a;
+          --text-secondary: #475569;
+          --text-muted: #94a3b8;
+          
+          --accent-emerald: #059669;
+          --accent-amber: #d97706;
+          --accent-amber-dim: rgba(217, 119, 6, 0.1);
+          --accent-amber-glow: rgba(217, 119, 6, 0.2);
+
+          --grid-color: rgba(0, 0, 0, 0.04);
+          --info-bg: rgba(0, 0, 0, 0.02);
+          --btn-sec-bg: rgba(0, 0, 0, 0.04);
+          --btn-sec-border: rgba(0, 0, 0, 0.1);
+          --card-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.12);
+          --node-box-bg: rgba(0, 0, 0, 0.03);
+          --diagram-bg: rgba(241, 245, 249, 0.7);
+        }
       }
 
       html, body {
@@ -42,6 +78,7 @@
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
 
       body {
@@ -53,7 +90,6 @@
         position: relative;
       }
 
-      /* Glowing background meshes */
       .bg-glow-1 {
         position: fixed;
         top: 20%;
@@ -61,35 +97,22 @@
         transform: translate(-50%, -50%);
         width: 600px;
         height: 400px;
-        background: radial-gradient(circle, rgba(255, 183, 3, 0.07) 0%, rgba(0, 0, 0, 0) 70%);
+        background: radial-gradient(circle, var(--accent-amber-glow) 0%, rgba(0, 0, 0, 0) 70%);
         pointer-events: none;
         z-index: 0;
       }
 
-      .bg-glow-2 {
-        position: fixed;
-        bottom: 10%;
-        right: 15%;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, rgba(0, 229, 160, 0.04) 0%, rgba(0, 0, 0, 0) 70%);
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      /* Subtle Grid Background */
       .bg-grid {
         position: fixed;
         inset: 0;
         background-image: 
-          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+          linear-gradient(var(--grid-color) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
         background-size: 40px 40px;
         pointer-events: none;
         z-index: 0;
       }
 
-      /* Main Card Container */
       .app-card {
         position: relative;
         z-index: 10;
@@ -101,11 +124,9 @@
         border: 1px solid var(--card-border);
         border-radius: 20px;
         padding: 36px 32px;
-        box-shadow: 
-          0 30px 60px -15px rgba(0, 0, 0, 0.7),
-          0 0 0 1px rgba(255, 255, 255, 0.05),
-          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        box-shadow: var(--card-shadow);
         animation: cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        transition: background 0.3s ease, border-color 0.3s ease;
       }
 
       @keyframes cardFadeIn {
@@ -113,14 +134,13 @@
         to   { opacity: 1; transform: translateY(0) scale(1); }
       }
 
-      /* Top Header Bar */
       .header-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 32px;
         padding-bottom: 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid var(--card-border);
       }
 
       .brand {
@@ -132,7 +152,7 @@
       .brand-icon {
         width: 32px;
         height: 32px;
-        background: linear-gradient(135deg, var(--accent-amber), #d97706);
+        background: linear-gradient(135deg, var(--accent-amber), #b45309);
         border-radius: 8px;
         display: flex;
         align-items: center;
@@ -143,7 +163,7 @@
       .brand-icon svg {
         width: 18px;
         height: 18px;
-        color: #05070a;
+        color: #ffffff;
       }
 
       .brand-title {
@@ -169,7 +189,7 @@
         padding: 5px 12px;
         font-family: var(--font-mono);
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--accent-amber);
         letter-spacing: 0.04em;
       }
@@ -182,7 +202,6 @@
         box-shadow: 0 0 8px var(--accent-amber);
       }
 
-      /* Hero Title Section */
       .hero-section {
         display: flex;
         align-items: flex-start;
@@ -220,10 +239,9 @@
         font-family: var(--font-mono);
       }
 
-      /* Status Diagram (Compact & Sleek) */
       .diagram-container {
-        background: rgba(6, 9, 14, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--diagram-bg);
+        border: 1px solid var(--card-border);
         border-radius: 14px;
         padding: 20px 16px;
         margin-bottom: 28px;
@@ -248,14 +266,13 @@
       .node-box {
         width: 44px;
         height: 44px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--node-box-bg);
+        border: 1px solid var(--card-border);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         position: relative;
-        transition: transform 0.2s ease;
       }
 
       .node-box svg {
@@ -271,10 +288,7 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        border: 2px solid #080c10;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        border: 2px solid var(--bg);
       }
 
       .badge-success { background: var(--accent-emerald); }
@@ -295,7 +309,7 @@
       .flow-line {
         flex: 1;
         height: 2px;
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--card-border);
         position: relative;
         margin-bottom: 22px;
       }
@@ -304,7 +318,6 @@
         background: linear-gradient(90deg, var(--accent-emerald), var(--accent-amber));
       }
 
-      /* Info Grid */
       .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -319,8 +332,8 @@
       }
 
       .info-box {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--info-bg);
+        border: 1px solid var(--card-border);
         border-radius: 12px;
         padding: 16px;
       }
@@ -341,7 +354,6 @@
         line-height: 1.5;
       }
 
-      /* Action Buttons */
       .actions-group {
         display: flex;
         gap: 12px;
@@ -366,34 +378,31 @@
       }
 
       .btn-primary {
-        background: linear-gradient(135deg, var(--accent-amber), #d97706);
-        color: #05070a;
+        background: linear-gradient(135deg, var(--accent-amber), #b45309);
+        color: #ffffff;
         box-shadow: 0 4px 14px var(--accent-amber-glow);
       }
 
       .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px var(--accent-amber-glow);
         filter: brightness(1.1);
       }
 
       .btn-secondary {
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--btn-sec-bg);
         color: var(--text-primary);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--btn-sec-border);
       }
 
       .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.15);
+        background: var(--btn-sec-border);
         transform: translateY(-1px);
       }
 
-      /* Card Footer Metadata */
       .card-footer {
         margin-top: 24px;
         padding-top: 16px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid var(--card-border);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -401,20 +410,13 @@
         font-size: 10px;
         color: var(--text-muted);
       }
-
-      .footer-meta {
-        display: flex;
-        gap: 12px;
-      }
     </style>
   </head>
   <body>
     <div class="bg-glow-1"></div>
-    <div class="bg-glow-2"></div>
     <div class="bg-grid"></div>
 
     <div class="app-card">
-      <!-- Header -->
       <div class="header-bar">
         <div class="brand">
           <div class="brand-icon">
@@ -430,7 +432,6 @@
         </div>
       </div>
 
-      <!-- Hero Section -->
       <div class="hero-section">
         <div class="code-display">404</div>
         <div class="hero-text">
@@ -439,7 +440,6 @@
         </div>
       </div>
 
-      <!-- Status Diagram -->
       <div class="diagram-container">
         <div class="diagram-flow">
           <div class="flow-node">
@@ -475,7 +475,6 @@
         </div>
       </div>
 
-      <!-- Info Grid -->
       <div class="info-grid">
         <div class="info-box">
           <div class="info-header">What Happened</div>
@@ -487,7 +486,6 @@
         </div>
       </div>
 
-      <!-- Action Buttons -->
       <div class="actions-group">
         <button class="btn btn-primary" onclick="history.back()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -499,12 +497,9 @@
         </a>
       </div>
 
-      <!-- Card Footer -->
       <div class="card-footer">
         <div>XyNginC Reverse Proxy</div>
-        <div class="footer-meta">
-          <span>$time_iso8601</span>
-        </div>
+        <div>$time_iso8601</div>
       </div>
     </div>
   </body>
