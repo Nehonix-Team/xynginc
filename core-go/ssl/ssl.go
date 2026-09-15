@@ -59,7 +59,7 @@ func cleanupStaleLockFiles() {
 	}
 }
 
-func runCertbotWithRetry(args []string) ([]byte, error) {
+func runCertbotWithRetry(domain string, args []string) ([]byte, error) {
 	maxRetries := 6
 	backoff := 3 * time.Second
 
@@ -83,7 +83,15 @@ func runCertbotWithRetry(args []string) ([]byte, error) {
 			return retryCmd.CombinedOutput()
 		}
 
-		// Case 2: Another instance running or lock conflict
+		// Case 2: Rate Limit Error from Let's Encrypt
+		if strings.Contains(stderrText, "too many certificates") || strings.Contains(stderrText, "retry after") || strings.Contains(stderrText, "rate-limits") {
+			retryAfter := ParseRetryAfterTimestamp(stderrText)
+			AddDomainToCooldown(domain, retryAfter, "Let's Encrypt rate limit reached (5 certs/week)")
+			logger.Warning(fmt.Sprintf("⚠️  [SSL Cooldown Cached] %s will be skipped until %s", domain, retryAfter.Format("2006-01-02 15:04:05 MST")))
+			return nil, fmt.Errorf("certbot rate limit error:\n%s", stderrText)
+		}
+
+		// Case 3: Another instance running or lock conflict
 		if strings.Contains(stderrText, "Another instance of Certbot is already running") ||
 			strings.Contains(stderrText, "certbot.lock") ||
 			strings.Contains(stderrText, "LockError") {
@@ -113,6 +121,12 @@ func SetupSSL(config *models.DomainConfig) error {
 
 	logger.Step(fmt.Sprintf("> Setting up SSL for %s...", config.Domain))
 
+	// Check if domain is in SSL Cooldown due to previous rate-limits
+	if inCooldown, retryAfter, reason := IsDomainInCooldown(config.Domain); inCooldown {
+		logger.Warning(fmt.Sprintf("⚠️  [SSL Cooldown Active] Skipping Certbot for %s until %s (%s)", config.Domain, retryAfter.Format("2006-01-02 15:04:05 MST"), reason))
+		return fmt.Errorf("SSL rate limit cooldown active for %s until %s: %s", config.Domain, retryAfter.Format("2006-01-02 15:04:05 MST"), reason)
+	}
+
 	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", config.Domain)
 	if _, err := os.Stat(certPath); err == nil {
 		logger.Success(fmt.Sprintf("✓ SSL certificate already exists for %s", config.Domain))
@@ -139,7 +153,7 @@ func SetupSSL(config *models.DomainConfig) error {
 		args = append(args, "--register-unsafely-without-email")
 	}
 
-	_, err := runCertbotWithRetry(args)
+	_, err := runCertbotWithRetry(config.Domain, args)
 	if err != nil {
 		return err
 	}
@@ -147,4 +161,5 @@ func SetupSSL(config *models.DomainConfig) error {
 	logger.Success("✓ SSL certificate obtained")
 	return nil
 }
+
 
