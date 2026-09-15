@@ -1,8 +1,7 @@
 <!--
 # ============================================================================
-# This code contains proprietary source code from NEHONIX
-# Copyright © 2025 NEHONIX - www.nehonix.com
-# Licensed under NEHONIX Open Source License (NOSL) v1.0
+# Copyright © 2026 NEHONIX - www.nehonix.com
+# XyNginC Nginx Controller - Modern 404 Error Template
 # ============================================================================
 -->
 <!doctype html>
@@ -10,66 +9,503 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>301 Moved Permanently - XCNP</title>
+    <title>404 Not Found — XyNginC Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg: #05070a;
+        --card-bg: rgba(12, 16, 23, 0.85);
+        --card-border: rgba(255, 255, 255, 0.08);
+        --card-border-glow: rgba(245, 166, 35, 0.2);
+        
+        --text-primary: #f0f4f8;
+        --text-secondary: #8a99ad;
+        --text-muted: #4e5d6c;
+        
+        --accent-emerald: #00e5a0;
+        --accent-amber: #ffb703;
+        --accent-amber-dim: rgba(255, 183, 3, 0.12);
+        --accent-amber-glow: rgba(255, 183, 3, 0.25);
+        
+        --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      html, body {
+        height: 100%;
+        background-color: var(--bg);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
       body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f5f5;
-        color: #333;
-        margin: 0;
-        padding: 0;
         display: flex;
-        justify-content: center;
         align-items: center;
-        height: 100vh;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 24px 16px;
+        position: relative;
       }
-      .container {
-        text-align: center;
-        background-color: white;
-        padding: 40px;
+
+      /* Glowing background meshes */
+      .bg-glow-1 {
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255, 183, 3, 0.07) 0%, rgba(0, 0, 0, 0) 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .bg-glow-2 {
+        position: fixed;
+        bottom: 10%;
+        right: 15%;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(0, 229, 160, 0.04) 0%, rgba(0, 0, 0, 0) 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Subtle Grid Background */
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image: 
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Main Card Container */
+      .app-card {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        max-width: 620px;
+        background: var(--card-bg);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        padding: 36px 32px;
+        box-shadow: 
+          0 30px 60px -15px rgba(0, 0, 0, 0.7),
+          0 0 0 1px rgba(255, 255, 255, 0.05),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        animation: cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      @keyframes cardFadeIn {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* Top Header Bar */
+      .header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .brand-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--accent-amber), #d97706);
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        max-width: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px var(--accent-amber-glow);
       }
-      h1 {
-        color: #1976d2;
-        font-size: 3rem;
-        margin-bottom: 10px;
+
+      .brand-icon svg {
+        width: 18px;
+        height: 18px;
+        color: #05070a;
       }
-      h2 {
-        color: #555;
-        font-size: 1.5rem;
-        margin-bottom: 20px;
+
+      .brand-title {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
       }
-      p {
-        font-size: 1.1rem;
-        line-height: 1.6;
-        color: #666;
+
+      .brand-title span {
+        color: var(--text-primary);
+        font-weight: 700;
       }
-      .btn {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 10px 20px;
-        background-color: #1976d2;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--accent-amber-dim);
+        border: 1px solid var(--card-border-glow);
+        border-radius: 100px;
+        padding: 5px 12px;
+        font-family: var(--font-mono);
+        font-size: 11px;
         font-weight: 500;
+        color: var(--accent-amber);
+        letter-spacing: 0.04em;
       }
-      .btn:hover {
-        background-color: #1565c0;
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        background-color: var(--accent-amber);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent-amber);
+      }
+
+      /* Hero Title Section */
+      .hero-section {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 28px;
+      }
+
+      .code-display {
+        font-family: var(--font-mono);
+        font-size: 56px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        background: linear-gradient(135deg, var(--accent-amber) 30%, #fef08a 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .hero-text {
+        flex: 1;
+      }
+
+      .hero-title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+      }
+
+      .hero-sub {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        font-family: var(--font-mono);
+      }
+
+      /* Status Diagram (Compact & Sleek) */
+      .diagram-container {
+        background: rgba(6, 9, 14, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 14px;
+        padding: 20px 16px;
+        margin-bottom: 28px;
+      }
+
+      .diagram-flow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .flow-node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        text-align: center;
+      }
+
+      .node-box {
+        width: 44px;
+        height: 44px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: transform 0.2s ease;
+      }
+
+      .node-box svg {
+        width: 20px;
+        height: 20px;
+        color: var(--text-secondary);
+      }
+
+      .node-badge {
+        position: absolute;
+        bottom: -3px;
+        right: -3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid #080c10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .badge-success { background: var(--accent-emerald); }
+      .badge-error { background: var(--accent-amber); }
+
+      .node-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .node-desc {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .flow-line {
+        flex: 1;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.08);
+        position: relative;
+        margin-bottom: 22px;
+      }
+
+      .flow-line.active {
+        background: linear-gradient(90deg, var(--accent-emerald), var(--accent-amber));
+      }
+
+      /* Info Grid */
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+
+      @media (max-width: 520px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .hero-section { flex-direction: column; gap: 12px; }
+        .app-card { padding: 24px 20px; }
+      }
+
+      .info-box {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .info-header {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+
+      .info-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      /* Action Buttons */
+      .actions-group {
+        display: flex;
+        gap: 12px;
+      }
+
+      .btn {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 18px;
+        border-radius: 10px;
+        font-family: var(--font-sans);
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border: none;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-amber), #d97706);
+        color: #05070a;
+        box-shadow: 0 4px 14px var(--accent-amber-glow);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px var(--accent-amber-glow);
+        filter: brightness(1.1);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-primary);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+      }
+
+      /* Card Footer Metadata */
+      .card-footer {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .footer-meta {
+        display: flex;
+        gap: 12px;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>301</h1>
-      <h2>Moved Permanently</h2>
-      <p>The requested resource has been moved to a new location.</p>
-      <p>
-        If you are not redirected automatically, please click the button below.
-      </p>
-      <a href="/" class="btn">Go to Homepage</a>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+    <div class="bg-grid"></div>
+
+    <div class="app-card">
+      <!-- Header -->
+      <div class="header-bar">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="brand-title">XyNginC <span>Gateway</span></div>
+        </div>
+        <div class="status-pill">
+          <div class="status-dot"></div>
+          HTTP 404 • NOT FOUND
+        </div>
+      </div>
+
+      <!-- Hero Section -->
+      <div class="hero-section">
+        <div class="code-display">404</div>
+        <div class="hero-text">
+          <h1 class="hero-title">Page Not Found</h1>
+          <p class="hero-sub">$host • Ray ID: $request_id</p>
+        </div>
+      </div>
+
+      <!-- Status Diagram -->
+      <div class="diagram-container">
+        <div class="diagram-flow">
+          <div class="flow-node">
+            <div class="node-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <div class="node-badge badge-success"></div>
+            </div>
+            <div class="node-name">Browser</div>
+            <div class="node-desc">Connected</div>
+          </div>
+
+          <div class="flow-line active"></div>
+
+          <div class="flow-node">
+            <div class="node-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <div class="node-badge badge-success"></div>
+            </div>
+            <div class="node-name">XyNginC</div>
+            <div class="node-desc">Active</div>
+          </div>
+
+          <div class="flow-line"></div>
+
+          <div class="flow-node">
+            <div class="node-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              <div class="node-badge badge-error"></div>
+            </div>
+            <div class="node-name">Route / File</div>
+            <div class="node-desc">Not Found</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Grid -->
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-header">What Happened</div>
+          <div class="info-text">The requested URL or endpoint could not be located on this server.</div>
+        </div>
+        <div class="info-box">
+          <div class="info-header">What You Can Do</div>
+          <div class="info-text">Please check the URL for typos or return to the application homepage.</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions-group">
+        <button class="btn btn-primary" onclick="history.back()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Go Back
+        </button>
+        <a class="btn btn-secondary" href="/">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Homepage
+        </a>
+      </div>
+
+      <!-- Card Footer -->
+      <div class="card-footer">
+        <div>XyNginC Reverse Proxy</div>
+        <div class="footer-meta">
+          <span>$time_iso8601</span>
+        </div>
+      </div>
     </div>
   </body>
 </html>
