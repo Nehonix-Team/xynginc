@@ -15,7 +15,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "xynginc",
-	Version: "go-ed-1.1.16",
+	Version: "go-ed-1.1.17",
 	Short:   "XyPriss Nginx Controller - Simplified Nginx and SSL management",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Read-only commands do not require root

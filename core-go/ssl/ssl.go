@@ -162,4 +162,98 @@ func SetupSSL(config *models.DomainConfig) error {
 	return nil
 }
 
+func SetupGroupedSSL(configs []*models.DomainConfig) map[string]error {
+	certbotMutex.Lock()
+	defer certbotMutex.Unlock()
+
+	results := make(map[string]error)
+
+	var domainsToFetch []string
+	var domainConfigsToFetch []*models.DomainConfig
+
+	for _, cfg := range configs {
+		certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", cfg.Domain)
+		if _, err := os.Stat(certPath); err == nil {
+			logger.Success(fmt.Sprintf("✓ SSL certificate already exists for %s", cfg.Domain))
+			results[cfg.Domain] = nil
+			continue
+		}
+
+		if inCooldown, retryAfter, reason := IsDomainInCooldown(cfg.Domain); inCooldown {
+			logger.Warning(fmt.Sprintf("⚠️  [SSL Cooldown Active] Skipping Certbot for %s until %s (%s)", cfg.Domain, retryAfter.Format("2006-01-02 15:04:05 MST"), reason))
+			results[cfg.Domain] = fmt.Errorf("SSL rate limit cooldown active for %s until %s: %s", cfg.Domain, retryAfter.Format("2006-01-02 15:04:05 MST"), reason)
+			continue
+		}
+
+		domainsToFetch = append(domainsToFetch, cfg.Domain)
+		domainConfigsToFetch = append(domainConfigsToFetch, cfg)
+	}
+
+	if len(domainsToFetch) == 0 {
+		return results
+	}
+
+	if !checkCertbotNginxPlugin() {
+		if err := installCertbotNginxPlugin(); err != nil {
+			for _, domain := range domainsToFetch {
+				results[domain] = err
+			}
+			return results
+		}
+	}
+
+	logger.Step(fmt.Sprintf("> Obtaining SSL certificates in a single grouped request for %d domain(s): %s...", len(domainsToFetch), strings.Join(domainsToFetch, ", ")))
+
+	args := []string{
+		"certonly",
+		"--nginx",
+		"--agree-tos",
+		"--non-interactive",
+	}
+
+	for _, domain := range domainsToFetch {
+		args = append(args, "-d", domain)
+	}
+
+	if domainConfigsToFetch[0].Email != "" {
+		args = append(args, "--email", domainConfigsToFetch[0].Email)
+	} else {
+		args = append(args, "--register-unsafely-without-email")
+	}
+
+	_, err := runCertbotWithRetry(domainsToFetch[0], args)
+	if err == nil {
+		logger.Success(fmt.Sprintf("✓ Grouped SSL certificate obtained successfully for %d domain(s)!", len(domainsToFetch)))
+		for _, domain := range domainsToFetch {
+			results[domain] = nil
+		}
+		return results
+	}
+
+	logger.Warning(fmt.Sprintf("⚠️  Grouped SSL request failed (%v). Falling back to individual domain setup...", err))
+	for _, cfg := range domainConfigsToFetch {
+		indArgs := []string{
+			"certonly",
+			"--nginx",
+			"-d", cfg.Domain,
+			"--agree-tos",
+			"--non-interactive",
+		}
+		if cfg.Email != "" {
+			indArgs = append(indArgs, "--email", cfg.Email)
+		} else {
+			indArgs = append(indArgs, "--register-unsafely-without-email")
+		}
+
+		_, indErr := runCertbotWithRetry(cfg.Domain, indArgs)
+		results[cfg.Domain] = indErr
+		if indErr == nil {
+			logger.Success(fmt.Sprintf("✓ SSL certificate obtained for %s", cfg.Domain))
+		}
+	}
+
+	return results
+}
+
+
 

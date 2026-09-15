@@ -91,74 +91,76 @@ func ApplyConfig(configPath string, noBackup bool, force bool) error {
 		return err
 	}
 
-	for _, domainConfig := range config.Domains {
-		logger.Step(fmt.Sprintf("\n🌐 Processing: %s", domainConfig.Domain))
+	// 1. Group domains needing new SSL certificates
+	var sslDomainsToSetup []*models.DomainConfig
 
-		if configExists(domainConfig.Domain) {
-			logger.Info("> Configuration already exists, will be overwritten")
-		}
-
+	for i := range config.Domains {
+		domainConfig := &config.Domains[i]
 		isIP := net.ParseIP(domainConfig.Domain) != nil
 
-		if domainConfig.SSL {
-			if isIP {
-				logger.Warning(fmt.Sprintf("⚠️  SSL requested for IP address '%s', but Let's Encrypt does not support IP addresses.", domainConfig.Domain))
-				logger.Warning("   Falling back to HTTP for this domain.")
+		if domainConfig.SSL && !isIP {
+			certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domainConfig.Domain)
+			if _, err := os.Stat(certPath); err != nil {
+				sslDomainsToSetup = append(sslDomainsToSetup, domainConfig)
+			}
+		}
+	}
 
+	// 2. If there are domains needing new SSL certs, set up temporary HTTP configs & single reload
+	if len(sslDomainsToSetup) > 0 {
+		logger.Step(fmt.Sprintf("\n🔒 Preparing SSL setup for %d domain(s)...", len(sslDomainsToSetup)))
+
+		for _, domainConfig := range sslDomainsToSetup {
+			tempConfig := *domainConfig
+			tempConfig.SSL = false
+			if err := generateNginxConfig(&tempConfig); err != nil {
+				return err
+			}
+			if err := enableSite(tempConfig.Domain); err != nil {
+				return err
+			}
+		}
+
+		logger.Info("> Reloading nginx once for certbot validation...")
+		if err := ReloadNginx(); err != nil {
+			return err
+		}
+
+		// Execute grouped SSL setup (1 single certbot call for all domains!)
+		_ = ssl.SetupGroupedSSL(sslDomainsToSetup)
+	}
+
+	// 3. Generate final Nginx configurations for all domains
+	logger.Step("\n🌐 Generating final Nginx domain configurations...")
+	for i := range config.Domains {
+		domainConfig := config.Domains[i]
+		isIP := net.ParseIP(domainConfig.Domain) != nil
+
+		if domainConfig.SSL && !isIP {
+			certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", domainConfig.Domain)
+			if _, err := os.Stat(certPath); err == nil {
+				if err := generateNginxConfig(&domainConfig); err != nil {
+					return err
+				}
+			} else {
+				logger.Warning(fmt.Sprintf("⚠️  Falling back to HTTP only for %s (SSL cert not available)", domainConfig.Domain))
 				domainConfig.SSL = false
 				if err := generateNginxConfig(&domainConfig); err != nil {
 					return err
 				}
-				if err := enableSite(domainConfig.Domain); err != nil {
-					return err
-				}
-			} else {
-				logger.Info("> SSL requested - generating temporary HTTP configuration first")
-
-				tempConfig := domainConfig
-				tempConfig.SSL = false
-
-				if err := generateNginxConfig(&tempConfig); err != nil {
-					return err
-				}
-				if err := enableSite(tempConfig.Domain); err != nil {
-					return err
-				}
-
-				logger.Info("> Reloading nginx for certbot validation...")
-				if err := ReloadNginx(); err != nil {
-					return err
-				}
-
-				if err := ssl.SetupSSL(&domainConfig); err != nil {
-					logger.Error(fmt.Sprintf("❌ SSL setup failed for %s: %v", domainConfig.Domain, err))
-					logger.Warning("   ⚠️  Falling back to HTTP only for this domain due to SSL error.")
-
-					httpConfig := domainConfig
-					httpConfig.SSL = false
-					if err := generateNginxConfig(&httpConfig); err != nil {
-						return err
-					}
-					if err := enableSite(httpConfig.Domain); err != nil {
-						return err
-					}
-				} else {
-					logger.Info("> Generating final HTTPS configuration...")
-					if err := generateNginxConfig(&domainConfig); err != nil {
-						return err
-					}
-					if err := enableSite(domainConfig.Domain); err != nil {
-						return err
-					}
-				}
 			}
 		} else {
+			if domainConfig.SSL && isIP {
+				logger.Warning(fmt.Sprintf("⚠️  SSL requested for IP address '%s', falling back to HTTP.", domainConfig.Domain))
+				domainConfig.SSL = false
+			}
 			if err := generateNginxConfig(&domainConfig); err != nil {
 				return err
 			}
-			if err := enableSite(domainConfig.Domain); err != nil {
-				return err
-			}
+		}
+
+		if err := enableSite(domainConfig.Domain); err != nil {
+			return err
 		}
 	}
 
