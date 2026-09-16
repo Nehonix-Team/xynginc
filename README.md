@@ -4,7 +4,7 @@
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg?style=flat-square)](https://dll.nehonix.com/licenses/NOSL)
 [![Go Core](https://img.shields.io/badge/Go%20Core-go--ed--1.1.20-00ADD8?logo=go&logoColor=white&style=flat-square)](https://github.com/Nehonix-Team/xynginc/releases)
 
-XyNginC (XNCP) is an enterprise-grade infrastructure controller designed for the XyPriss web ecosystem. It automates Nginx reverse-proxy generation, Let's Encrypt SSL/TLS lifecycle management with multi-domain certificate grouping, and systemd service orchestration.
+XyNginC (XNCP) is an enterprise-grade infrastructure controller designed for the (XyPriss)[https://xypriss.nehonix.com] web ecosystem. It automates Nginx reverse-proxy generation, Let's Encrypt SSL/TLS lifecycle management with multi-domain certificate grouping, and systemd service orchestration.
 
 ---
 
@@ -31,6 +31,7 @@ For complete technical specifications, architecture guides, and API references, 
 ## Quick Start
 
 ### 1. Package Installation
+
 Install XyNginC in your XyPriss project using `xfpm`:
 
 ```bash
@@ -38,6 +39,7 @@ xfpm add xynginc
 ```
 
 ### 2. Service Deployment
+
 Deploy and launch your background systemd service:
 
 ```bash
@@ -45,6 +47,7 @@ sudo xfpmx xncp deploy
 ```
 
 ### 3. Service Management & Status
+
 Inspect service health and real-time execution logs:
 
 ```bash
