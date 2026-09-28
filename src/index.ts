@@ -14,11 +14,10 @@ import {
 import { validateConfig } from "./mods/validateConfig";
 import { startXNCPlugin } from "./startPlugin";
 
-
 export type PlC = Parameters<typeof Plugin.create>[0];
 export type PluginServer = Parameters<NonNullable<PlC["onServerStart"]>>[0];
 
-/**
+/** 
  * XyNginC Plugin for XyPriss.
  * Automates Nginx and SSL management for your server.
  *
@@ -43,16 +42,6 @@ export default function XNCP(options: XyNginCPluginOptions) {
     description: string;
   }>(__sys__);
 
-
-  const effectiveSudoPassword =
-    sudoPassword ||
-    (typeof __sys__ !== "undefined"
-      ? __sys__.__env__?.get("SUDO_PASSWORD") ||
-        __sys__.__env__?.get("XY_SUDO_PASSWORD") ||
-        __sys__.__env__?.get("XYPRISS_SUDO_PASSWORD")
-      : undefined) ||
-    "";
-
   return Plugin.create(
     {
       name: pkg.name,
@@ -73,7 +62,7 @@ export default function XNCP(options: XyNginCPluginOptions) {
           version,
           domains,
           installRequirements,
-          sudoPassword: effectiveSudoPassword,
+          sudoPassword: sudoPassword || "",
         });
       },
 

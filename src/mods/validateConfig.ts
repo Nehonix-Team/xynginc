@@ -12,9 +12,7 @@ export function validateConfig(config: XyNginCConfig): void {
   const d = config.domains;
 
   if (!d || d.length === 0) {
-    throw new Error(
-      "[XyNginC] Configuration error: 'domains' array cannot be empty",
-    );
+    return;
   }
 
   for (const d2 of d) {

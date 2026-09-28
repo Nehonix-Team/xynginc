@@ -66,6 +66,11 @@ export async function applyConfig(
   },
   sudoCmd: string,
 ): Promise<void> {
+  if (!config.domains || config.domains.length === 0) {
+    Logger.info("[XyNginC] No domains configured to apply.");
+    return;
+  }
+
   // Map camelCase to snake_case for Go core
   const mappedConfig = {
     auto_reload: config.auto_reload,

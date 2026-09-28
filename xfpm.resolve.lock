@@ -1,7 +1,7 @@
 {
   "lockfileVersion": 2,
   "name": "xynginc",
-  "version": "1.0.89",
+  "version": "1.0.102",
   "dependencies": {
     "@ioredis/commands@1.10.0": {
       "version": "1.10.0",
@@ -485,6 +485,31 @@
         "xypriss-compression": "xypriss-compression",
         "xypriss-security": "xypriss-security"
       }
+    },
+    "xypriss@9.13.3": {
+      "version": "9.13.3",
+      "integrity": "sha512-FICb/w9uDFs0T86v7RnSidc0KCyBcJl2pagDNsumkMn/JNMzGRevnHjipTXYGaSzZHDiYOCz2JWuHVjcwf1wjQ==",
+      "tarball": "https://registry.npmjs.org/xypriss/-/xypriss-9.13.3.tgz",
+      "resolved_dependencies": {
+        "ioredis": "5.11.1",
+        "nehoid": "2.2.2",
+        "redis": "5.12.1",
+        "reliant-type": "2.1.5",
+        "strulink": "1.3.0",
+        "xss": "1.0.15",
+        "xypriss-compression": "1.0.6",
+        "xypriss-security": "2.1.19"
+      },
+      "dependency_real_names": {
+        "ioredis": "ioredis",
+        "nehoid": "nehoid",
+        "redis": "redis",
+        "reliant-type": "reliant-type",
+        "strulink": "strulink",
+        "xss": "xss",
+        "xypriss-compression": "xypriss-compression",
+        "xypriss-security": "xypriss-security"
+      }
     }
   },
   "root_versions": {
@@ -492,7 +517,7 @@
     "reliant-type": "2.1.5",
     "strulink": "1.3.0",
     "typescript": "5.9.3",
-    "xypriss": "9.12.66",
+    "xypriss": "9.13.3",
     "xypriss-security": "2.1.19"
   }
 }

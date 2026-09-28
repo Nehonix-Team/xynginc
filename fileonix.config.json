@@ -1,0 +1,37 @@
+{
+  "script": "simulations/XCIS/src/server.ts",
+  "watch": [
+    "."
+  ],
+  "ignore": [
+    "node_modules",
+    "dist",
+    ".git",
+    ".next",
+    "build",
+    "coverage"
+  ],
+  "extensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs"
+  ],
+  "runner": "xfpm",
+  "libs": [
+    "xess"
+  ],
+  "nodeArgs": null,
+  "envFile": "",
+  "clearScreen": false,
+  "batchMode": false,
+  "debounceMs": 100,
+  "maxRestarts": -1,
+  "useFileHash": true,
+  "gracefulMs": 3000,
+  "silent": false,
+  "noSignals": false,
+  "targetFile": ""
+}

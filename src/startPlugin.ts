@@ -14,7 +14,7 @@ import {
 } from "./mods/requirements";
 import { XyNginCDomainConfig } from "./types";
 
-const getSudo = (sudoPassword: string) => {
+const getSudo = (sudoPassword?: string) => {
   // 1. Direct option passed by the user
   if (sudoPassword) {
     Logger.info(
@@ -23,35 +23,8 @@ const getSudo = (sudoPassword: string) => {
     return `echo '${sudoPassword}' | sudo -S`;
   }
 
-  // 2. Official XyPriss Workspace API resolution of SUDO_PASSWORD
-  const envPwd =
-    typeof __sys__ !== "undefined"
-      ? __sys__.__env__?.get("SUDO_PASSWORD") ||
-        __sys__.__env__?.get("XY_SUDO_PASSWORD") ||
-        __sys__.__env__?.get("XYPRISS_SUDO_PASSWORD")
-      : undefined;
-
-  if (envPwd) {
-    Logger.info(
-      "[XyNginC] Using sudo password injected from environment variables.",
-    );
-    return `echo '${envPwd}' | sudo -S`;
-  }
-
   Logger.warn(
-    "[XyNginC] ⚠️ No sudo password detected (options or __sys__.__env__). Falling back to non-interactive mode (sudo -n).",
-  );
-  Logger.warn(
-    "[XyNginC] 💡 If SUDO_PASSWORD is set in your host .env, this means either:",
-  );
-  Logger.warn(
-    "[XyNginC]    1. The variable is missing or empty in your environment.",
-  );
-  Logger.warn(
-    "[XyNginC]    2. The plugin lacks workspace permission to access host env in 'xypriss.config.jsonc' (under '$internal').",
-  );
-  Logger.warn(
-    "[XyNginC] 👉 Solution: Authorize permissions in 'xypriss.config.jsonc' or pass 'sudoPassword' directly in the plugin options.",
+    "[XyNginC] ⚠️ No sudo password provided. Falling back to non-interactive mode (sudo -n).",
   );
   Logger.warn(
     "[XyNginC] ⚠️ If the command requires a password, it will fail immediately instead of hanging.",
@@ -60,9 +33,6 @@ const getSudo = (sudoPassword: string) => {
   // Return non-interactive sudo to prevent infinite blocking/hanging
   return "sudo -n";
 };
-
-let appliedConfigKey: string | null = null;
-let activeInitPromise: Promise<void> | null = null;
 
 export async function startXNCPlugin(
   server: PluginServer,
@@ -108,69 +78,45 @@ export async function startXNCPlugin(
       },
     });
 
-    const configKey = JSON.stringify({
-      domains,
-      autoReload,
-      autoFixFirewall,
-    });
+    // 2. Resolve sudo command asynchronously
+    const sudoCmd = await getSudo(sudoPassword);
 
-    if (appliedConfigKey !== configKey) {
-      if (!activeInitPromise) {
-        activeInitPromise = (async () => {
-          // 2. Check system requirements
-          Logger.info("[XyNginC] Checking system requirements...");
-          const requirementsOk = await checkRequirements(
-            binary,
-            getSudo(sudoPassword),
-          );
+    // 3. Check system requirements
+    Logger.info("[XyNginC] Checking system requirements...");
 
-          if (!requirementsOk && installRequirements) {
-            Logger.info(
-              "[XyNginC] Requirements missing, installing automatically...",
-            );
-            await installRequirementsHandler(binary, getSudo(sudoPassword));
-            Logger.info("[XyNginC] Requirements installed, re-checking...");
-            const recheckOk = await checkRequirements(
-              binary,
-              getSudo(sudoPassword),
-            );
-            if (!recheckOk) {
-              throw new Error(
-                "[XyNginC] System requirements installation failed or was incomplete. Please run 'sudo  xfpmx xynginc deploy' manually.",
-              );
-            }
-          } else if (!requirementsOk) {
-            throw new Error(
-              "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xfpmx  xynginc deploy",
-            );
-          }
+    // Check if requirements are satisfied
+    const requirementsOk = await checkRequirements(
+      binary,
+      sudoCmd,
+    );
 
-          // 3. Apply configuration
-          Logger.info("[XyNginC] Applying configuration...");
-          await applyConfig(
-            binary,
-            {
-              domains,
-              auto_reload: autoReload,
-              auto_fix_firewall: autoFixFirewall,
-            },
-            getSudo(sudoPassword),
-          );
-
-          appliedConfigKey = configKey;
-          Logger.success("[XyNginC] Configuration applied successfully!");
-        })();
-      }
-      try {
-        await activeInitPromise;
-      } finally {
-        activeInitPromise = null;
-      }
-    } else {
+    // Install requirements if enabled and needed
+    if (!requirementsOk && installRequirements) {
       Logger.info(
-        "[XyNginC] Configuration already applied for this multi-server group.",
+        "[XyNginC] Requirements missing, installing automatically...",
+      );
+      await installRequirementsHandler(binary, sudoCmd);
+      Logger.info("[XyNginC] Requirements installed, re-checking...");
+      await checkRequirements(binary, sudoCmd);
+    } else if (!requirementsOk) {
+      throw new Error(
+        "[XyNginC] System requirements not satisfied. Install with 'installRequirements: true' or run: sudo xynginc install",
       );
     }
+
+    // 4. Apply configuration
+    Logger.info("[XyNginC] Applying configuration...");
+    await applyConfig(
+      binary,
+      {
+        domains,
+        auto_reload: autoReload,
+        auto_fix_firewall: autoFixFirewall,
+      },
+      sudoCmd,
+    );
+
+    Logger.success("[XyNginC] Configuration applied successfully!");
 
     // Expose CLI helper methods on server
     const sUtil = {
@@ -188,16 +134,16 @@ export async function startXNCPlugin(
           ssl,
           email,
           maxBodySize,
-          getSudo(sudoPassword),
+          sudoCmd,
         ),
       removeDomain: (domain: string) =>
-        removeDomain(binary, domain, getSudo(sudoPassword)),
-      listDomains: () => listDomains(binary, getSudo(sudoPassword)),
-      reload: () => reloadNginx(binary, getSudo(sudoPassword)),
-      test: () => testNginx(binary, getSudo(sudoPassword)),
-      status: () => getStatus(binary, getSudo(sudoPassword)),
+        removeDomain(binary, domain, sudoCmd),
+      listDomains: () => listDomains(binary, sudoCmd),
+      reload: () => reloadNginx(binary, sudoCmd),
+      test: () => testNginx(binary, sudoCmd),
+      status: () => getStatus(binary, sudoCmd),
       installRequirements: () =>
-        installRequirementsHandler(binary, getSudo(sudoPassword)),
+        installRequirementsHandler(binary, sudoCmd),
     };
     (server as any).app.xynginc = sUtil;
     (server as any).xynginc = sUtil;

@@ -1,6 +1,6 @@
 {
   "name": "xynginc",
-  "version": "1.0.101",
+  "version": "1.0.103",
   "description": "XyPriss Nginx Controller - Automatic Nginx & SSL management for XyPriss servers",
   "author": "Seth Eleazar - iDevo",
   "license": "NOSL",
@@ -36,22 +36,21 @@
   ],
   "scripts": {
     "build": "tsc && xfpm run build:multi",
+    "build::sign": "xfpm run build && xfpm sign ./ --min-version 1.0.81 --fix",
     "build:all": "xfpm run build:go && xfpm run build",
     "build:go": "cd core-go && go build -o xynginc && cp xynginc ../bin/",
     "build:multi": "bash scripts/build.sh",
     "dev": "tsc --watch",
     "install:manual": "sudo bash scripts/install.sh",
     "postinstall": "node scripts/postinstall.js",
-    "prepublishOnly": "xfpm run build && xfpm sign ./ --min-version 1.0.81 --fix"
+    "prepublishOnly": "xfpm run build::sign"
   },
   "dependencies": {
     "reliant-type": "^2.1.5",
     "strulink": "^1.2.0",
     "xypriss-security": "^2.1.16"
   },
-  "peerDependencies": {
-    "xypriss": ">=9.12.69"
-  },
+  "peerDependencies": {"xypriss":"^9.13.13"},
   "devDependencies": {
     "@types/node": "^20.19.37",
     "typescript": "^5.9.3"
