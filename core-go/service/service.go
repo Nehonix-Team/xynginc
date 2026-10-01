@@ -22,9 +22,11 @@ import (
 )
 
 type PackageJSON struct {
-	Name    string            `json:"name"`
-	Main    string            `json:"main"`
-	Scripts map[string]string `json:"scripts"`
+	Name            string            `json:"name"`
+	Main            string            `json:"main"`
+	Scripts         map[string]string `json:"scripts"`
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
 }
 
 // AutoDetectServiceInfo attempts to intelligently detect runtime, entrypoint, project name, user and env file.
@@ -79,16 +81,67 @@ func AutoDetectServiceInfo(customName, customRuntime, customEntrypoint, customUs
 		}
 	}
 
-	// 3. Runtime (prefer Bun, then Node)
-	runtime = customRuntime
-	if runtime == "" {
-		var userHome string
-		if u, err := user.Lookup(runUser); err == nil {
-			userHome = u.HomeDir
-		} else {
-			userHome = filepath.Join("/home", runUser)
-		}
+	var userHome string
+	if u, err := user.Lookup(runUser); err == nil {
+		userHome = u.HomeDir
+	} else {
+		userHome = filepath.Join("/home", runUser)
+	}
 
+	// Detect if project belongs to XyPriss ecosystem
+	isXypriss := false
+	if _, err := os.Stat(filepath.Join(cwd, "xypriss.config.jsonc")); err == nil {
+		isXypriss = true
+	} else if _, err := os.Stat(filepath.Join(cwd, "xypriss.config.json")); err == nil {
+		isXypriss = true
+	} else if _, err := os.Stat(filepath.Join(cwd, "xypriss.json")); err == nil {
+		isXypriss = true
+	} else if pkg.Dependencies != nil && pkg.Dependencies["xypriss"] != "" {
+		isXypriss = true
+	} else if pkg.DevDependencies != nil && pkg.DevDependencies["xypriss"] != "" {
+		isXypriss = true
+	}
+
+	// Search for xfpm CLI
+	var xfpmPath string
+	xfpmCandidates := []string{
+		"/usr/local/bin/xfpm",
+		"/usr/bin/xfpm",
+		filepath.Join(userHome, ".xfpm/bin/xfpm"),
+		filepath.Join(userHome, "bin/xfpm"),
+	}
+	for _, candidate := range xfpmCandidates {
+		if _, err := os.Stat(candidate); err == nil {
+			xfpmPath = candidate
+			break
+		}
+	}
+	if xfpmPath == "" {
+		if path, err := exec.LookPath("xfpm"); err == nil {
+			xfpmPath = path
+		}
+	}
+
+	// 3. Runtime & Entrypoint
+	runtime = customRuntime
+	entrypoint = customEntrypoint
+
+	// Prefer xfpm for XyPriss apps or when start script is present
+	if customRuntime == "" && xfpmPath != "" && (isXypriss || (pkg.Scripts != nil && pkg.Scripts["start"] != "")) {
+		runtime = xfpmPath
+		if entrypoint == "" {
+			if pkg.Scripts != nil && pkg.Scripts["start"] != "" {
+				entrypoint = "start"
+			} else if pkg.Scripts != nil && pkg.Scripts["serve"] != "" {
+				entrypoint = "serve"
+			} else {
+				entrypoint = "start"
+			}
+		}
+	}
+
+	// Fallback to direct runtime (Bun, then Node) if not launched via xfpm
+	if runtime == "" {
 		candidates := []string{
 			filepath.Join(userHome, ".xfpm/bin/bun"),
 			filepath.Join(userHome, ".bun/bin/bun"),
@@ -113,13 +166,12 @@ func AutoDetectServiceInfo(customName, customRuntime, customEntrypoint, customUs
 			} else if path, err := exec.LookPath("node"); err == nil {
 				runtime = path
 			} else {
-				return "", "", "", "", "", "", fmt.Errorf("neither 'bun' nor 'node' runtime could be found. Please specify with --runtime")
+				return "", "", "", "", "", "", fmt.Errorf("neither 'xfpm', 'bun' nor 'node' runtime could be found. Please specify with --runtime")
 			}
 		}
 	}
 
-	// 4. Entrypoint
-	entrypoint = customEntrypoint
+	// 4. Entrypoint fallback
 	if entrypoint == "" {
 		entryCandidates := []string{
 			"src/server.ts",
@@ -184,6 +236,13 @@ func InstallService(customName, customRuntime, customEntrypoint, customUser, cus
 		return err
 	}
 
+	var userHome string
+	if u, err := user.Lookup(runUser); err == nil {
+		userHome = u.HomeDir
+	} else {
+		userHome = filepath.Join("/home", runUser)
+	}
+
 	serviceFileName := fmt.Sprintf("%s.service", name)
 	serviceFilePath := filepath.Join("/etc/systemd/system", serviceFileName)
 
@@ -213,9 +272,12 @@ Wants=nginx.service
 Type=simple
 User=%s
 WorkingDirectory=%s
+Environment="PATH=%s/.xfpm/bin:%s/.bun/bin:%s/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=%s %s
 Restart=always
 RestartSec=5s
+AmbientCapabilities=CAP_SYS_ADMIN CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SETUID CAP_SETGID
 %sLimitNOFILE=65535
 LimitNPROC=4096
 StandardOutput=journal
@@ -224,7 +286,7 @@ SyslogIdentifier=%s
 
 [Install]
 WantedBy=multi-user.target
-`, name, runUser, cwd, runtime, entrypoint, envDirective, name)
+`, name, runUser, cwd, userHome, userHome, userHome, runtime, entrypoint, envDirective, name)
 
 	// Write service file
 	if err := os.WriteFile(serviceFilePath, []byte(serviceContent), 0644); err != nil {

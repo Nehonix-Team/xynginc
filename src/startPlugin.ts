@@ -12,7 +12,9 @@ import {
   removeDomain,
   testNginx,
 } from "./mods/requirements";
+import { pkg } from "./pkg";
 import { XyNginCDomainConfig } from "./types";
+
 
 const getSudo = (sudoPassword?: string) => {
   // 1. Direct option passed by the user
@@ -66,6 +68,8 @@ export async function startXNCPlugin(
       "[XyNginC] Security notice: The password is used solely for privileged communication with your operating system. It is never stored, logged, or transmitted externally.",
     );
   }
+
+  console.log("root: ", __sys__.plugins.get(pkg.name))
 
   try {
     // 1. Ensure binary exists

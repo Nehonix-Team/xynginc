@@ -11,9 +11,23 @@ import XNCP from "xynginc";
 export const serverConfigs: ServerOptions = {
   plugins: {
     register: [
-      XNCP({
-        domains: [], // for testing
-      }),
+      // XNCP({
+      //   domains: [], // for testing
+      // }),
+    ],
+  },
+  multiServer: {
+    // enabled: true,
+    // quietStartup: false,
+    servers: [
+      // {
+      //   id: "test2",
+      //   port: 1234, 
+      // },
+      // {
+      //   id: "test2",
+      //   port: 1235,
+      // },
     ],
   },
   /**

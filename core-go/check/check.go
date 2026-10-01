@@ -81,10 +81,46 @@ func CheckRequirements() error {
 		allOk = false
 	}
 
+	// Auto-configure kernel for libXESS Zero-Trust sandbox if needed
+	ConfigureLibXESSCompatibility()
+
 	if allOk {
 		logger.Success("\n✅ All requirements met!")
 		return nil
 	}
 
 	return fmt.Errorf("some requirements are missing. Please install nginx and certbot")
+}
+
+// ConfigureLibXESSCompatibility detects and relaxes Linux kernel / AppArmor restrictions on user namespaces.
+func ConfigureLibXESSCompatibility() {
+	// 1. Check if AppArmor restricts unprivileged user namespaces (Ubuntu 24.04+)
+	apparmorPath := "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
+	if data, err := os.ReadFile(apparmorPath); err == nil {
+		val := strings.TrimSpace(string(data))
+		if val == "1" {
+			fmt.Print("   libXESS / userns:      ")
+			if out, err := exec.Command("sysctl", "-w", "kernel.apparmor_restrict_unprivileged_userns=0").CombinedOutput(); err == nil {
+				logger.Success("✓ Configured unprivileged userns (AppArmor relaxed for libXESS)")
+				_ = os.WriteFile("/etc/sysctl.d/99-xypriss.conf", []byte("kernel.apparmor_restrict_unprivileged_userns=0\n"), 0644)
+			} else {
+				logger.Warning(fmt.Sprintf("⚠️ Unable to relax AppArmor userns: %s", strings.TrimSpace(string(out))))
+			}
+		}
+	}
+
+	// 2. Check unprivileged_userns_clone if present
+	clonePath := "/proc/sys/kernel/unprivileged_userns_clone"
+	if data, err := os.ReadFile(clonePath); err == nil {
+		val := strings.TrimSpace(string(data))
+		if val == "0" {
+			fmt.Print("   libXESS / clone:       ")
+			if out, err := exec.Command("sysctl", "-w", "kernel.unprivileged_userns_clone=1").CombinedOutput(); err == nil {
+				logger.Success("✓ Enabled unprivileged_userns_clone")
+				_ = os.WriteFile("/etc/sysctl.d/99-xypriss.conf", []byte("kernel.unprivileged_userns_clone=1\n"), 0644)
+			} else {
+				logger.Warning(fmt.Sprintf("⚠️ Unable to enable userns clone: %s", strings.TrimSpace(string(out))))
+			}
+		}
+	}
 }

@@ -5,8 +5,8 @@
 // https://xypriss.nehonix.com/docs/config/guide
 
 {
-   "$env": {
-    "whitelist": ["XYPRISS_SECRET_PASS", "LEGACY_CLIENT_ID"]
+  "$env": {
+    "whitelist": ["XYPRISS_SECRET_PASS", "LEGACY_CLIENT_ID"],
   },
   "$vars": {
     "__name__": "&(pkg).name",
@@ -24,6 +24,9 @@
   },
   "$internal": {
     "xynginc": {
+      // "__xfs__": {
+      //   "path": "CWD://",
+      // },
       "signature": {
         "author_key": "ed25519:0e2e1accdbba45480979305256d50d368ae6cc2c0d7ee378c5f1999ae834cf58",
       },
